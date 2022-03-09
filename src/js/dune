@@ -1,0 +1,5 @@
+(executable
+ (name index)
+ (modes js)
+ (flags -g)
+ (libraries brr brr-lwd ec.ev))
