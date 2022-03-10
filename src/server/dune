@@ -9,9 +9,12 @@
 
 (subdir static
   (rule
-   (deps ../../js/index.bc.js)
-   (targets index.bc.js)
-   (action (progn (copy ../../js/index.bc.js index.bc.js)))))
+   (deps ../../js/index.bc.js ../../js/style.css)
+   (targets index.bc.js style.css)
+   (action 
+     (progn 
+       (copy ../../js/index.bc.js index.bc.js)
+       (copy ../../js/style.css style.css)))))
 
 (rule
  (target static.ml)

@@ -131,16 +131,16 @@ let tracing_func ws path_pid () =
   let cursor = create_cursor path_pid in
   let ts_to_ms ts = Int64.(to_float @@ div (Timestamp.to_int64 ts) (of_int 1000)) in
   let runtime_begin (domain_id : Domain.id) ts phase =
-    send_data ws (Events.System { name = (runtime_phase_name phase); ts = (ts_to_ms ts); domain_id = (domain_id :> int) })
+    send_data ws (Events.System (`Phase { name = (runtime_phase_name phase); ts = (ts_to_ms ts); domain_id = (domain_id :> int) }))
   in
   let runtime_end (domain_id : Domain.id) ts phase =
-    send_data ws (Events.System { name = (runtime_phase_name phase); ts = (ts_to_ms ts); domain_id = (domain_id :> int)})
+    send_data ws (Events.System (`Phase { name = (runtime_phase_name phase); ts = (ts_to_ms ts); domain_id = (domain_id :> int)}))
   in 
-  let runtime_counter (domain_id : Domain.id) ts counter _value =
-    send_data ws (Events.System { name = (runtime_counter_name counter); ts = (ts_to_ms ts); domain_id = (domain_id :> int)})
+  let runtime_counter (domain_id : Domain.id) ts counter value =
+    send_data ws (Events.System (`Counter ({ name = (runtime_counter_name counter); ts = (ts_to_ms ts); domain_id = (domain_id :> int)}, value)))
   in
   let lifecycle (domain_id : Domain.id) ts l _ =
-    send_data ws (Events.System { name = (lifecycle_name l); ts = (ts_to_ms ts); domain_id = (domain_id :> int) })
+    send_data ws (Events.System (`Lifecycle { name = (lifecycle_name l); ts = (ts_to_ms ts); domain_id = (domain_id :> int) }))
   in
   let callbacks = Callbacks.create ~runtime_begin ~runtime_end ~runtime_counter ~lifecycle () in
   let rec aux () =
