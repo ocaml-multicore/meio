@@ -1,0 +1,45 @@
+@import url('https://rsms.me/inter/inter.css');
+html { font-family: 'Inter', sans-serif; }
+@supports (font-variation-settings: normal) {
+  html { font-family: 'Inter var', sans-serif; }
+}
+
+#container {
+    display: grid;
+    margin-top: 1rem;
+    gap: 1rem;
+    grid-template:
+        "info   info"   auto
+        "filter filter" auto
+        "poi    explore"   auto
+        "poi    main"   minmax(auto,1fr)
+        / minmax(30em,1fr) 2fr minmax(17em,1fr);
+}
+
+table {
+    border-collapse: collapse;
+}
+
+table.system-table {
+    table-layout: fixed;
+}
+
+tr, td, th {
+    border: none;
+}
+
+td, th {
+    padding: 7px;
+}
+
+thead {
+    background-color: rgba(256, 256, 256, 25%)
+}
+
+tbody tr:nth-child(odd):not(.focused) {
+    background-color: rgba(137, 255, 229, 0.05)
+}
+
+tbody tr:nth-child(even):not(.focused) {
+    background-color: rgba(137, 255, 229, 0.1)
+}
