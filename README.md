@@ -11,14 +11,14 @@ Eio-console provides an application for monitoring running programs. This works 
 
 ## Installation
 
-In the pre-OCaml 5 world, installation is not easy. The best way to get a compatible compiler is to use the excellent opam-plugin [opam-compiler](). At the time of writing you can then create an Eventring-ready switch with:
+In this pre-OCaml 5 world, installation is not easy. The best way to get a compatible compiler is to use the excellent opam-plugin [opam-compiler](https://github.com/ocaml-opam/opam-compiler). At the time of writing you can then create an Eventring-ready switch with:
 
 ```
 opam compiler create '#10964'
 opam switch set-invariant ocaml-variants.5.0.0+trunk
 ```
 
-After that it is recommended to install the alpha repository:
+If that PR gets merged you should be able to go via the normal `ocaml.5.0.0+trunk` route. After make sure to add the alpha repository:
 
 ```
 opam repo add alpha git+https://github.com/kit-ty-kate/opam-alpha-repository.git
@@ -32,17 +32,17 @@ opam pin . -yn
 opam install . --deps-only --with-test
 ```
 
-Hopefully that will get all of the necessary dependencies so you can then run `dune build`.
+Hopefully that will get all of the necessary dependencies so you can run `dune build`.
 
 ## Usage
 
-To use eio-console right now, it only supports monitoring a single eventring that you must specify. First, you have to run some program with eventring enabled. The executables in the `test` directory can be used for this:
+To use eio-console right now, it only supports monitoring a single eventring that you must specify. First, you have to run some program with eventring enabled. The executables in the `test` directory can be used for this (or any OCaml program that you can compile!):
 
 ```
 OCAML_EVENTRING_START=1 _build/default/test/fib.exe 2 50
 ```
 
-This will run the program and their should be a `<pid>.eventring` file in the directory that you ran the program from. You can then run
+This will run the program and there should be a `<pid>.eventring` file in the directory that you ran the program from. You can then run
 
 ```
 dune exec -- src/server/main.exe <pid>.eventring
