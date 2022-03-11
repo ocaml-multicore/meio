@@ -9,5 +9,8 @@ Providing tools to introspect and debug these programs is crucial. Along with do
 
 Eio-console provides an application for monitoring running programs. This works in the browser, communicating information over a websocket. It could be extended to run directly in the terminal using [nottui]().
 
+## Bindings
+
+The `bindings` directory contains partial jsoo bindings to various JavaScript libraries which are themselves vendorered statically. See the directories for the various the licenses for those libraries.
 
 [Eio]: https://github.com/ocaml-multicore/eio

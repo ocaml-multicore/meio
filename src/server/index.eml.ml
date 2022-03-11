@@ -11,6 +11,7 @@ let render =
     <body>
         <h3>eio-console</h3>
         <div id="container">
+          <div class="graph" id="g" style="width: 600px;"></div>
         </div>
         <script src="/index.bc.js"></script>
     </body>

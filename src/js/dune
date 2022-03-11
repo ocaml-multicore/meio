@@ -2,4 +2,4 @@
  (name index)
  (modes js)
  (flags -g)
- (libraries brr brr-lwd ec.ev))
+ (libraries brr brr-lwd dygraph ec.ev))
