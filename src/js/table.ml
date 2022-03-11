@@ -35,11 +35,12 @@ module Make (R : Row) = struct
         Lwd_table.map_reduce reducer el_monoid tbl
       in
         Lwd_seq.to_list elements 
-        |> List.filteri (fun i _ -> i < 40) 
         |> Lwd_seq.of_list
     in
-      Elwd.table ~at:[ `P (At.class' (Jstr.v "system-table"))] [
-        `P R.header;
-        `R (Elwd.tbody [ `S t ])
+      Elwd.div ~at:[ `P (At.class' (Jstr.v "table-container")) ] [
+        `R (Elwd.table ~at:[ `P (At.class' (Jstr.v "syst"))] [
+          `P R.header;
+          `R (Elwd.tbody [ `S t ])
+        ])
       ]
 end
