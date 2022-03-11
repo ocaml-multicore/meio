@@ -1,11 +1,7 @@
 open Brr
 open Brr_io
 open Brr_lwd
-open Let_syntax
-
-module Events = Events
-module Table = Table
-
+open Ec_js
 
 module Runtime_row = struct
   type t = {
@@ -61,8 +57,6 @@ let or_raise = function
   | Error err -> 
     Console.log [ Jv.Error.stack err ];
     failwith "err"
-
-open Let_syntax
 
 let graph =
   let opts = 
