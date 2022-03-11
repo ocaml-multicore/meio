@@ -1,7 +1,5 @@
 (** Extending the built-in support for working with
     JavaScript arrays. *)
-open Brr
-
 include (module type of Jv.Jarray)
 
 val push : t -> Jv.t -> unit
