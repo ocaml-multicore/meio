@@ -1,6 +1,6 @@
 (executable
  (name main)
- (libraries dream lwt.unix ezjsonm ec.ev))
+ (libraries dream lwt.unix ezjsonm ec.ev runtime_events))
 
 (rule
  (targets index.ml)

@@ -19,13 +19,13 @@ let forget client_id =
 let handle_client pid client =
   let open Lwt.Syntax in
   let _client_id = track client in
-  let+ () = Er.start_trace_record client pid in
+  let+ () = Rev.start_trace_record client pid in
   ()
 
 let () =
   let pid = 
     match String.split_on_char '.' Sys.argv.(1) with
-    | pid :: [ "eventring" ] -> print_endline pid; int_of_string pid
+    | pid :: [ "events" ] -> print_endline pid; int_of_string pid
     | _ -> failwith "Bad eventring file"
   in
   Dream.run
