@@ -1,26 +1,45 @@
-let loader _root path _request =
+open Eio.Std
+open Cohttp_eio
+open Websocket
+
+let loader path =
   match Static.read path with
-  | None -> Dream.empty `Not_Found
-  | Some asset -> Dream.respond asset
+  | None -> 
+    traceln "%s not found" path;
+    Server.Response.not_found
+  | Some asset -> 
+    let mime = Magic_mime.lookup path in
+    let headers = 
+      Cohttp.Header.of_list [ "Content-Type", mime; "Content-Length", string_of_int @@ String.length asset ]
+    in
+    Server.Response.create ~headers (String asset)
 
-let clients : (int, Dream.websocket) Hashtbl.t =
-  Hashtbl.create 5
+let handle_client pid send =
+  Rev.start_trace_record send pid
 
-let track =
-  let last_client_id = ref 0 in
-  fun websocket ->
-    last_client_id := !last_client_id + 1;
-    Hashtbl.replace clients !last_client_id websocket;
-    !last_client_id
+let handler ~sw pid : Cohttp_eio.Server.handler = fun request ->
+  let open Frame in
+  let uri = Cohttp_eio.Server.Request.resource request in
+  match uri with
+  | "/websocket" ->
+      traceln "[PATH] /ws";
+      let (resp, send_frame) =
+        Websocket_eio.upgrade_connection request (fun {opcode; content; _} ->
+          match opcode with
+          | Opcode.Close -> traceln "[RECV] CLOSE"
+          | _ -> traceln "[RECV] %s" content)
+      in
+      let go () =
+        handle_client pid (fun content -> send_frame @@ Frame.create ~content ())
+      in
+      Fiber.fork ~sw go; 
+      resp
+  | "/" | "/index.html" -> loader "index.html"
+  | path -> loader path
 
-let forget client_id =
-  Hashtbl.remove clients client_id
-
-let handle_client pid client =
-  let open Lwt.Syntax in
-  let _client_id = track client in
-  let+ () = Rev.start_trace_record client pid in
-  ()
+let start_server env sw pid port =
+  traceln "[SERV] Listening for HTTP on port %d" port;
+  Cohttp_eio.Server.run ~port env sw (handler ~sw pid)
 
 let () =
   let pid = 
@@ -28,10 +47,6 @@ let () =
     | pid :: [ "events" ] -> print_endline pid; int_of_string pid
     | _ -> failwith "Bad eventring file"
   in
-  Dream.run
-  @@ Dream.logger
-  @@ Dream.router [
-    Dream.get "/" (fun _ -> Dream.html Index.render);
-    Dream.get "/websocket" (fun _ -> Dream.websocket (handle_client (Some (".", pid))));
-    Dream.get "/**" (Dream.static ~loader "")
-  ]
+  Eio_main.run @@ fun env -> 
+  Switch.run @@ fun sw ->
+  start_server env sw (Some (".", pid)) 8080

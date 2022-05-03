@@ -18,7 +18,8 @@
  (synopsis "Monitor live Eio programs")
  (description "Eio-console provides an executable that allows you to monitor OCaml programs using Eventring.")
  (depends
-   (dream (>= 1.0.0~alpha4))
+   eio_main
+   websocket-eio
    (js_of_ocaml (>= 4.0.0))
    (domainslib :with-test)
    crunch

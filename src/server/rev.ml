@@ -122,14 +122,13 @@ module Events = struct
   include Ec_ev.Ev.Make(Ezjsonm_parser) 
 end
 
-let send_data ws data =
+let send_data send data =
   let data = 
     data |> Events.to_json |> Ezjsonm.value_to_string
   in
-  Lwt.async (fun () -> Dream.send ws data)
+    send data
 
 let tracing_func ws path_pid () =
-  let open Lwt.Syntax in
   let cursor = create_cursor path_pid in
   let ts_to_ms ts = Int64.(to_float @@ div (Timestamp.to_int64 ts) (of_int 1000)) in
   let runtime_begin (domain_id : Domain.id) ts phase =
@@ -148,10 +147,10 @@ let tracing_func ws path_pid () =
   let rec aux () =
     if Atomic.get tracing then begin 
      ignore (read_poll cursor callbacks None);
-     let* () = Lwt_unix.sleep 0.3 in
+     Eio_unix.sleep 0.3;
      aux ()
     end else 
-      Lwt.return ()
+      ()
   in
     aux ()
 

@@ -1,0 +1,3 @@
+[submodule "ocaml-websocket"]
+	path = ocaml-websocket
+	url = https://github.com/patricoferris/ocaml-websocket
