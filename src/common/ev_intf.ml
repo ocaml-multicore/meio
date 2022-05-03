@@ -16,7 +16,7 @@ module type Json = sig
   val float : float -> t
   (** Converts a float to JSON *)
 
-  val to_int : t -> (int, [`Msg of string]) result
+  val to_int : t -> (int, [ `Msg of string ]) result
   (** Convert the JSON to an integer *)
 
   val int : int -> t
@@ -48,10 +48,13 @@ end
 module type S = sig
   type json
 
-  type t = 
-    | System of [ `Counter of system_common * int | `Phase of system_common | `Lifecycle of system_common ]
+  type t =
+    | System of
+        [ `Counter of system_common * int
+        | `Phase of system_common
+        | `Lifecycle of system_common ]
     | Eio of string
-  
+
   and system_common = { name : string; ts : float; domain_id : int }
 
   val to_json : t -> json
@@ -62,4 +65,4 @@ module type Ev = sig
   module type S = S
 
   module Make (J : Json) : S with type json = J.t
-end 
+end
