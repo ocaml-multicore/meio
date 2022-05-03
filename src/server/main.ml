@@ -26,7 +26,6 @@ let handler ~sw pid : Cohttp_eio.Server.handler =
   let uri = Cohttp_eio.Server.Request.resource request in
   match uri with
   | "/websocket" ->
-      traceln "[PATH] /ws";
       let resp, send_frame =
         Websocket_eio.upgrade_connection request (fun { opcode; content; _ } ->
             match opcode with
@@ -43,7 +42,7 @@ let handler ~sw pid : Cohttp_eio.Server.handler =
   | path -> loader path
 
 let start_server env sw pid port =
-  traceln "[SERV] Listening for HTTP on port %d" port;
+  traceln "[SERV] listening on port %d" port;
   Cohttp_eio.Server.run ~port env sw (handler ~sw pid)
 
 let () =
