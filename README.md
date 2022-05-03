@@ -41,7 +41,7 @@ Hopefully that will get all of the necessary dependencies so you can run `dune b
 To use eio-console right now, it only supports monitoring a single eventring that you must specify. First, you have to run some program with eventring enabled. The executables in the `test` directory can be used for this (or any OCaml program that you can compile!):
 
 ```
-OCAML_EVENTRING_START=1 _build/default/test/fib.exe 2 50
+OCAML_RUNTIME_EVENTS_START=1 _build/default/test/fib.exe 2 50
 ```
 
 This will run the program and there should be a `<pid>.eventring` file in the directory that you ran the program from. You can then run
