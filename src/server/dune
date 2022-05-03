@@ -1,23 +1,32 @@
 (executable
  (name main)
- (libraries dream lwt.unix ezjsonm ec.ev runtime_events))
+ (libraries
+  websocket-eio
+  eio_main
+  eio.unix
+  magic-mime
+  ezjsonm
+  ec.ev
+  runtime_events))
 
-(rule
- (targets index.ml)
- (deps index.eml.ml)
- (action (run dream_eml %{deps} --workspace %{workspace_root})))
-
-(subdir static
-  (rule
-   (deps ../../js/bin/index.bc.js ../../js/bin/style.css)
-   (targets index.bc.js style.css)
-   (action 
-     (progn 
-       (copy ../../js/bin/index.bc.js index.bc.js)
-       (copy ../../js/bin/style.css style.css)))))
+(subdir
+ static
+ (rule
+  (deps
+   ../../js/bin/index.bc.js
+   ../../js/bin/style.css
+   ../../js/bin/index.html)
+  (targets index.bc.js style.css index.html)
+  (action
+   (progn
+    (copy ../../js/bin/index.bc.js index.bc.js)
+    (copy ../../js/bin/style.css style.css)
+    (copy ../../js/bin/index.html index.html)))))
 
 (rule
  (target static.ml)
- (deps static/index.bc.js (source_tree static))
- (action (with-stdout-to %{null}
-  (run ocaml-crunch -m plain static -o %{target}))))
+ (deps static/index.bc.js static/index.html static/style.css)
+ (action
+  (with-stdout-to
+   %{null}
+   (run ocaml-crunch -m plain static -o %{target}))))

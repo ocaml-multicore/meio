@@ -1,1 +1,1 @@
-(data_only_dirs httpaf angstrom websocketaf gluten)
+(vendored_dirs ocaml-websocket)

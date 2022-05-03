@@ -9,8 +9,6 @@ Providing tools to introspect and debug these programs is crucial. Along with do
 
 Eio-console provides an application for monitoring running programs. This works in the browser, communicating information over a websocket. It could be extended to run directly in the terminal using [nottui](https://github.com/let-def/lwd).
 
-The future plans are to completely remove lwt from the code base, the main part being to port websockets to Eio which is ongoing [on this branch](https://github.com/patricoferris/ocaml-websocket/tree/eio) along with the [cohttp-eio](https://github.com/mirage/ocaml-cohttp/pull/857) port.
-
 ## Installation
 
 In this pre-OCaml 5 world, installation is not easy. The best way to get a compatible compiler is to use the excellent opam-plugin [opam-compiler](https://github.com/ocaml-opam/opam-compiler). At the time of writing you can then create an Eventring-ready switch with:
@@ -44,10 +42,10 @@ To use eio-console right now, it only supports monitoring a single eventring tha
 OCAML_RUNTIME_EVENTS_START=1 _build/default/test/fib.exe 2 50
 ```
 
-This will run the program and there should be a `<pid>.eventring` file in the directory that you ran the program from. You can then run
+This will run the program and there should be a `<pid>.events` file in the directory that you ran the program from. You can then run
 
 ```
-dune exec -- src/server/main.exe <pid>.eventring
+dune exec -- src/server/main.exe <pid>.events
 ```
 
 and navigate to http://localhost:8080 to see the dashboard.

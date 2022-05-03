@@ -4,7 +4,7 @@ let tracing = Atomic.make true
 
 let runtime_counter_name counter =
   match counter with
-    EV_C_ALLOC_JUMP -> "C_ALLOC_JUMP"
+  | EV_C_ALLOC_JUMP -> "C_ALLOC_JUMP"
   | EV_C_FORCE_MINOR_ALLOC_SMALL -> "C_FORCE_MINOR_ALLOC_SMALL"
   | EV_C_FORCE_MINOR_MAKE_VECT -> "C_FORCE_MINOR_MAKE_VECT"
   | EV_C_FORCE_MINOR_SET_MINOR_HEAP_SIZE -> "C_FORCE_MINOR_SET_MINOR_HEAP_SIZE"
@@ -20,12 +20,14 @@ let runtime_counter_name counter =
   | EV_C_REQUEST_MAJOR_ALLOC_SHR -> "C_REQUEST_MAJOR_ALLOC_SHR"
   | EV_C_REQUEST_MAJOR_ADJUST_GC_SPEED -> "C_REQUEST_MAJOR_ADJUST_GC_SPEED"
   | EV_C_REQUEST_MINOR_REALLOC_REF_TABLE -> "C_REQUEST_MINOR_REALLOC_REF_TABLE"
-  | EV_C_REQUEST_MINOR_REALLOC_EPHE_REF_TABLE -> "C_REQUEST_MINOR_REALLOC_EPHE_REF_TABLE"
-  | EV_C_REQUEST_MINOR_REALLOC_CUSTOM_TABLE -> "C_REQUEST_MINOR_REALLOC_CUSTOM_TABLE"
+  | EV_C_REQUEST_MINOR_REALLOC_EPHE_REF_TABLE ->
+      "C_REQUEST_MINOR_REALLOC_EPHE_REF_TABLE"
+  | EV_C_REQUEST_MINOR_REALLOC_CUSTOM_TABLE ->
+      "C_REQUEST_MINOR_REALLOC_CUSTOM_TABLE"
 
 let runtime_phase_name phase =
   match phase with
-    EV_COMPACT_MAIN -> "COMPACT_MAIN"
+  | EV_COMPACT_MAIN -> "COMPACT_MAIN"
   | EV_COMPACT_RECOMPACT -> "COMPACT_RECOMPACT"
   | EV_EXPLICIT_GC_SET -> "EXPLICIT_GC_SET"
   | EV_EXPLICIT_GC_STAT -> "EXPLICIT_GC_STAT"
@@ -87,7 +89,7 @@ let runtime_phase_name phase =
 
 let lifecycle_name lifecycle =
   match lifecycle with
-    EV_RING_START -> "RING_START"
+  | EV_RING_START -> "RING_START"
   | EV_RING_STOP -> "RING_STOP"
   | EV_RING_PAUSE -> "RING_PAUSE"
   | EV_RING_RESUME -> "RING_RESUME"
@@ -118,46 +120,72 @@ module Ezjsonm_parser = struct
   let is_null = function `Null -> true | _ -> false
 end
 
-module Events = struct 
-  include Ec_ev.Ev.Make(Ezjsonm_parser) 
+module Events = struct
+  include Ec_ev.Ev.Make (Ezjsonm_parser)
 end
 
-let send_data ws data =
-  let data = 
-    data |> Events.to_json |> Ezjsonm.value_to_string
-  in
-  Lwt.async (fun () -> Dream.send ws data)
+let send_data send data =
+  let data = data |> Events.to_json |> Ezjsonm.value_to_string in
+  send data
 
 let tracing_func ws path_pid () =
-  let open Lwt.Syntax in
   let cursor = create_cursor path_pid in
-  let ts_to_ms ts = Int64.(to_float @@ div (Timestamp.to_int64 ts) (of_int 1000)) in
+  let ts_to_ms ts =
+    Int64.(to_float @@ div (Timestamp.to_int64 ts) (of_int 1000))
+  in
   let runtime_begin (domain_id : Domain.id) ts phase =
-    send_data ws (Events.System (`Phase { name = (runtime_phase_name phase); ts = (ts_to_ms ts); domain_id = (domain_id :> int) }))
+    send_data ws
+      (Events.System
+         (`Phase
+           {
+             name = runtime_phase_name phase;
+             ts = ts_to_ms ts;
+             domain_id = (domain_id :> int);
+           }))
   in
   let runtime_end (domain_id : Domain.id) ts phase =
-    send_data ws (Events.System (`Phase { name = (runtime_phase_name phase); ts = (ts_to_ms ts); domain_id = (domain_id :> int)}))
-  in 
+    send_data ws
+      (Events.System
+         (`Phase
+           {
+             name = runtime_phase_name phase;
+             ts = ts_to_ms ts;
+             domain_id = (domain_id :> int);
+           }))
+  in
   let runtime_counter (domain_id : Domain.id) ts counter value =
-    send_data ws (Events.System (`Counter ({ name = (runtime_counter_name counter); ts = (ts_to_ms ts); domain_id = (domain_id :> int)}, value)))
+    send_data ws
+      (Events.System
+         (`Counter
+           ( {
+               name = runtime_counter_name counter;
+               ts = ts_to_ms ts;
+               domain_id = (domain_id :> int);
+             },
+             value )))
   in
   let lifecycle (domain_id : Domain.id) ts l _ =
-    send_data ws (Events.System (`Lifecycle { name = (lifecycle_name l); ts = (ts_to_ms ts); domain_id = (domain_id :> int) }))
+    send_data ws
+      (Events.System
+         (`Lifecycle
+           {
+             name = lifecycle_name l;
+             ts = ts_to_ms ts;
+             domain_id = (domain_id :> int);
+           }))
   in
-  let callbacks = Callbacks.create ~runtime_begin ~runtime_end ~runtime_counter ~lifecycle () in
+  let callbacks =
+    Callbacks.create ~runtime_begin ~runtime_end ~runtime_counter ~lifecycle ()
+  in
   let rec aux () =
-    if Atomic.get tracing then begin 
-     ignore (read_poll cursor callbacks None);
-     let* () = Lwt_unix.sleep 0.3 in
-     aux ()
-    end else 
-      Lwt.return ()
+    if Atomic.get tracing then (
+      ignore (read_poll cursor callbacks None);
+      Eio_unix.sleep 0.3;
+      aux ())
+    else ()
   in
-    aux ()
+  aux ()
 
-let stop_trace_record () =
-  Atomic.set tracing false
-
-let start_trace_record ws path_pid =
-  tracing_func ws path_pid ()
-  (* ignore (Domain.spawn (tracing_func ws path_pid)) *)
+let stop_trace_record () = Atomic.set tracing false
+let start_trace_record ws path_pid = tracing_func ws path_pid ()
+(* ignore (Domain.spawn (tracing_func ws path_pid)) *)

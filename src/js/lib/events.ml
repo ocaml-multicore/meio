@@ -1,8 +1,7 @@
 module Brr_json = struct
   type t = Jv.t
 
-  let catch_err f v =
-    try Ok (f v) with _ -> Error (`Msg "Parser error")
+  let catch_err f v = try Ok (f v) with _ -> Error (`Msg "Parser error")
 
   let find t s =
     let rec loop jv = function
@@ -26,4 +25,4 @@ module Brr_json = struct
   let is_null = Jv.is_null
 end
 
-include Ec_ev.Ev.Make(Brr_json)
+include Ec_ev.Ev.Make (Brr_json)
