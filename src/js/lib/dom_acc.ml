@@ -4,7 +4,6 @@
    JavaScript array which I suspect will offer better performance than using OCaml
    arrays and converting them. *)
 open Jarr.Syntax
-open Brr
 
 type t = Jarr.t
 
@@ -25,14 +24,12 @@ let update_after_existing ~dom_acc ~domain_id idx =
   let v = dom_acc.:[idx].:[domain_id + 1] in
   for i = idx + 1 to Jarr.length dom_acc - 1 do
     dom_acc.:[i].:[domain_id + 1] <- v;
-    Console.log [ i; dom_acc ]
   done
 
 (* This function is for case (4) *)
 let update_after_inserting ~dom_acc ~domain_id idx =
   let length = Jarr.length dom_acc in
   let v = dom_acc.:[idx].:[domain_id + 1] in
-  Console.log [ Jstr.v "INSERT UP"; v ];
   for i = idx + 1 to length - 1 do
     dom_acc.:[i].:[domain_id + 1] <- v
   done

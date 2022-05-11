@@ -40,6 +40,8 @@ dev-repo: "git+https://github.com/patricoferris/eio-console.git"
 pin-depends: [
   # Supporting Runtime_events
   [ "ocamlfind.1.9.3" "git+https://github.com/patricoferris/ocamlfind#a8e5777c1605d64b3b570545352ba272074f4df1" ]
+  # Dune support
+  [ "itv-tree.dev" "git+https://github.com/patricoferris/interval-tree#13d10b6227c4803e1d4545a6313bdf47f926690e" ]
   # Domains support
   [ "js_of_ocaml.4.0.0" "git+https://github.com/patricoferris/js_of_ocaml#9d8fc512ca182da594320b08570e20fc1815e137" ]
   [ "js_of_ocaml-compiler.4.0.0" "git+https://github.com/patricoferris/js_of_ocaml#9d8fc512ca182da594320b08570e20fc1815e137" ]

@@ -20,7 +20,7 @@ let loader path =
 
 let handle_client pid send = Rev.start_trace_record send pid
 
-let handler ~sw pid : Cohttp_eio.Server.handler =
+let handler ~sw view _pid : Cohttp_eio.Server.handler =
  fun request ->
   let open Frame in
   let uri = Cohttp_eio.Server.Request.resource request in
@@ -33,25 +33,41 @@ let handler ~sw pid : Cohttp_eio.Server.handler =
             | _ -> traceln "[RECV] %s" content)
       in
       let go () =
-        handle_client pid (fun content ->
-            send_frame @@ Frame.create ~content ())
+        (* handle_client pid (fun content ->
+            send_frame @@ Frame.create ~content ()); *) ()
       in
       Fiber.fork ~sw go;
+      Fiber.fork ~sw (fun () -> send_frame @@ Frame.create ~content:(Rev.Events.to_json @@ Rev.Events.Eio view |> Ezjsonm.value_to_string) ());
       resp
   | "/" | "/index.html" -> loader "index.html"
   | path -> loader path
 
-let start_server env sw pid port =
+let start_server env sw view pid port =
   traceln "[SERV] listening on port %d" port;
-  Cohttp_eio.Server.run ~port env sw (handler ~sw pid)
+  Cohttp_eio.Server.run ~port env sw (handler ~sw view pid)
 
-let () =
+open Cmdliner
+
+let runtime_ev_file =
+  let doc = "Runtime events file e.g. 9987.events." in
+  Arg.(required @@ opt (some string) None @@ info ~doc ~docv:"EVENTS" [ "events" ])
+
+let main events_file src =
   let pid =
-    match String.split_on_char '.' Sys.argv.(1) with
+    match String.split_on_char '.' events_file with
     | pid :: [ "events" ] ->
         print_endline pid;
         int_of_string pid
     | _ -> failwith "Bad eventring file"
   in
   Eio_main.run @@ fun env ->
-  Switch.run @@ fun sw -> start_server env sw (Some (".", pid)) 8080
+  Switch.run @@ fun sw -> 
+  let view = Mtv.load (List.hd src) in
+  start_server env sw view (Some (".", pid)) 8080
+
+let () =
+  let doc = "view OCaml runtime events and Eio fibers" in
+  let man = [] in
+  let info = Cmd.info ~doc ~man "ec" in
+  let term = Term.(const main $ runtime_ev_file $ Mtv_unix.trace_files) in
+  exit @@ Cmd.eval (Cmd.v info term)

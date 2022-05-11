@@ -7,7 +7,9 @@
   magic-mime
   ezjsonm
   ec.ev
-  runtime_events))
+  runtime_events
+  mirage-trace-viewer 
+  mirage-trace-viewer.unix))
 
 (subdir
  static

@@ -1,3 +1,3 @@
 (library
  (name ec_js)
- (libraries brr brr-lwd dygraph ec.ev))
+ (libraries brr brr-lwd dygraph ec.ev mirage-trace-viewer-js.runtime))

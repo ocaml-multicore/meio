@@ -83,6 +83,7 @@ let ui =
 
 let connect () =
   let on_message msg =
+    Console.log [ msg ];
     let msg = Message.Ev.data @@ Ev.as_type msg in
     let json = Brr.Json.decode msg |> or_raise in
     match Events.of_json json with
@@ -96,7 +97,9 @@ let connect () =
           Dom_acc.add_entry dom_acc ts domain_id (float_of_int value);
           let file = Dygraph.data_of_jv dom_acc in
           Dygraph.update_opts graph (Dygraph.opts ~file ()))
-    | e -> Console.log [ Console.str "Non-system Event"; e ]
+    | Events.Eio e ->
+      Console.log [ Jstr.v "eio-console packet" ];
+      Viewer.view (Marshal.from_string e 0) "canvas"
   in
   let ws = Websocket.create (Jstr.v "ws://localhost:8080/websocket") in
   Ev.listen Message.Ev.message on_message (Websocket.as_target ws)
