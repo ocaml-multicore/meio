@@ -23,6 +23,7 @@
    (js_of_ocaml (>= 4.0.0))
    (domainslib :with-test)
    crunch
+   magic-mime
    brr
    brr-lwd
    ezjsonm))
