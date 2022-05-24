@@ -24,5 +24,7 @@ jobs:
           opam-depext: false
       - run: opam pin . -yn
       - run: opam install . --deps-only --with-test
-      - run: opam install ocplib-endian conduit base64 -y
+      - run: |
+          opam install ocplib-endian conduit base64 -y
+          opam install cohttp --deps-only
       - run: opam exec -- dune build
