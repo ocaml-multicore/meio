@@ -11,7 +11,6 @@ bug-reports: "https://github.com/patricoferris/eio-console/issues"
 depends: [
   "dune" {>= "2.9"}
   "eio_main"
-  "websocket-eio"
   "js_of_ocaml" {>= "4.0.0"}
   "domainslib" {with-test}
   "crunch"
@@ -41,5 +40,4 @@ dev-repo: "git+https://github.com/patricoferris/eio-console.git"
 pin-depends: [
   # Supporting Runtime_events
   [ "ocamlfind.1.9.3" "git+https://github.com/patricoferris/ocamlfind#a8e5777c1605d64b3b570545352ba272074f4df1" ]
-  [ "cohttp-eio.dev" "git+https://github.com/bikallem/ocaml-cohttp#a28c65a5d4920b695fcbe0a138ea1736e454448e" ]
 ]

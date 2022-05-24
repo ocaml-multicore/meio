@@ -1,5 +1,4 @@
 pin-depends: [
   # Supporting Runtime_events
   [ "ocamlfind.1.9.3" "git+https://github.com/patricoferris/ocamlfind#a8e5777c1605d64b3b570545352ba272074f4df1" ]
-  [ "cohttp-eio.dev" "git+https://github.com/bikallem/ocaml-cohttp#a28c65a5d4920b695fcbe0a138ea1736e454448e" ]
 ]
