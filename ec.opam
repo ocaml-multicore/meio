@@ -41,6 +41,4 @@ dev-repo: "git+https://github.com/patricoferris/eio-console.git"
 pin-depends: [
   # Supporting Runtime_events
   [ "ocamlfind.1.9.3" "git+https://github.com/patricoferris/ocamlfind#a8e5777c1605d64b3b570545352ba272074f4df1" ]
-  [ "http.dev" "git+https://github.com/patricoferris/ocaml-cohttp#b902d1511e13542de0e0f8859ad7e6b827b584d4" ]
-  [ "cohttp-eio.dev" "git+https://github.com/patricoferris/ocaml-cohttp#b902d1511e13542de0e0f8859ad7e6b827b584d4" ]
 ]

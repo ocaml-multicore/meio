@@ -24,6 +24,9 @@ jobs:
           opam-depext: false
       - run: opam pin . -yn
       - run: |
+          opam pin http.dev ./ocaml-websocket/ocaml-cohttp -yn
+          opam pin cohttp.dev ./ocaml-websocket/ocaml-cohttp -yn
+          opam pin cohttp-eio.dev ./ocaml-websocket/ocaml-cohttp -yn
           opam pin websocket.dev ./ocaml-websocket -yn
           opam pin websocket-eio.dev ./ocaml-websocket -yn
       - run: opam install . --deps-only
