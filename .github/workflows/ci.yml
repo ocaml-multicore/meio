@@ -21,5 +21,6 @@ jobs:
             default: https://github.com/ocaml/opam-repository.git
           opam-depext: false
       - run: opam pin . -yn
+      - run: opam pin websocket-eio ./ocaml-websocket -yn
       - run: opam install . --deps-only --with-test
       - run: opam exec -- dune build
