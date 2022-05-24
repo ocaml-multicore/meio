@@ -5,11 +5,13 @@ html { font-family: 'Inter', sans-serif; }
 }
 
 #container {
-    display: grid;
-    margin-top: 1rem;
-    gap: 1rem;
-    grid-template:
-        "graph graph graph syst syst";
+    display: flex;
+    flex-direction: column;
+}
+
+#graphs {
+  display: flex;
+  justify-content: space-around;
 }
 
 table {
@@ -38,8 +40,7 @@ tbody tr:nth-child(even):not(.focused) {
 }
 
 .graph {
-    grid-area: graph;
-    width: 100%;
+    width: 720px;
 }
 
 .syst {

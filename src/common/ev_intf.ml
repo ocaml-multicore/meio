@@ -51,11 +51,12 @@ module type S = sig
   type t =
     | System of
         [ `Counter of system_common * int
-        | `Phase of system_common
+        | `Phase of system_common * phase
         | `Lifecycle of system_common ]
     | Eio of string
 
   and system_common = { name : string; ts : float; domain_id : int }
+  and phase = Begin | End
 
   val to_json : t -> json
   val of_json : json -> t
