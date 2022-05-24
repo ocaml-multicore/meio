@@ -26,5 +26,5 @@ jobs:
       - run: |
           opam pin websocket.dev ./ocaml-websocket -yn
           opam pin websocket-eio.dev ./ocaml-websocket -yn
-      - run: opam install . --deps-only --with-test
+      - run: opam install . --deps-only
       - run: opam exec -- dune build
