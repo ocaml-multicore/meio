@@ -3,7 +3,7 @@ eio-console
 
 *Status: Very, very experimental & WIP*
 
-<p style="text-align: center;">
+<p align="center">
     <img src="./docs/console.gif" alt="The application running showing real time events of a live OCaml program"/>
 </p>
 
