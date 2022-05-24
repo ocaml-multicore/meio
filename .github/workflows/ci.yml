@@ -23,5 +23,6 @@ jobs:
             default: https://github.com/ocaml/opam-repository.git
           opam-depext: false
       - run: opam pin . -yn
-      - run: opam install . --deps-only
+      - run: opam install . --deps-only --with-test
+      - run: opam install ocplib-endian conduit -y
       - run: opam exec -- dune build
