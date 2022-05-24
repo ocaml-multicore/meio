@@ -10,20 +10,29 @@ module Make (J : Ev_intf.Json) = struct
   type t =
     | System of
         [ `Counter of system_common * int
-        | `Phase of system_common
+        | `Phase of system_common * phase
         | `Lifecycle of system_common ]
     | Eio of string
 
   and system_common = { name : string; ts : float; domain_id : int }
+  and phase = Begin | End
+
+  let phase_to_string = function Begin -> "Begin" | End -> "End"
+
+  let phase_of_string = function
+    | "Begin" -> Ok Begin
+    | "End" -> Ok End
+    | _ -> Error (`Msg "Unknown phase")
 
   let to_json = function
-    | System (`Phase { name; ts; domain_id }) ->
+    | System (`Phase ({ name; ts; domain_id }, phase)) ->
         J.obj
           [
             ("kind", J.string "system-phase");
             ("name", J.string name);
             ("ts", J.float ts);
             ("domain_id", J.int domain_id);
+            ("phase", J.string @@ phase_to_string phase);
           ]
     | System (`Lifecycle { name; ts; domain_id }) ->
         J.obj
@@ -59,7 +68,12 @@ module Make (J : Ev_intf.Json) = struct
     | None -> invalid_arg "Invalid JSON, should have a `kind` field"
     | Some t -> (
         match J.to_string t |> or_raise with
-        | "system-phase" -> System (`Phase (system_common j))
+        | "system-phase" ->
+            let phase =
+              J.find j [ "phase" ] |> Option.get |> J.to_string |> fun v ->
+              Result.bind v phase_of_string |> or_raise
+            in
+            System (`Phase (system_common j, phase))
         | "system-lifecycle" -> System (`Lifecycle (system_common j))
         | "system-counter" ->
             let value =

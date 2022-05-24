@@ -118,13 +118,15 @@ let tracing_func ws path_pid () =
     send_data ws
       (Events.System
          (`Phase
-           { name = runtime_phase_name phase; ts = ts_to_ms ts; domain_id }))
+           ( { name = runtime_phase_name phase; ts = ts_to_ms ts; domain_id },
+             Begin )))
   in
   let runtime_end domain_id ts phase =
     send_data ws
       (Events.System
          (`Phase
-           { name = runtime_phase_name phase; ts = ts_to_ms ts; domain_id }))
+           ( { name = runtime_phase_name phase; ts = ts_to_ms ts; domain_id },
+             End )))
   in
   let runtime_counter domain_id ts counter value =
     send_data ws
@@ -144,12 +146,13 @@ let tracing_func ws path_pid () =
   let rec aux () =
     if Atomic.get tracing then (
       ignore (read_poll cursor callbacks None);
-      Eio_unix.sleep 0.3;
+      Eio_unix.sleep 0.1;
       aux ())
     else ()
   in
   aux ()
 
 let stop_trace_record () = Atomic.set tracing false
-let start_trace_record ws path_pid = tracing_func ws path_pid ()
-(* ignore (Domain.spawn (tracing_func ws path_pid)) *)
+
+let start_trace_record mgr ws path_pid =
+  ignore (Eio.Domain_manager.run mgr (tracing_func ws path_pid))

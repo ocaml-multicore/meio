@@ -18,9 +18,9 @@ let loader path =
       in
       Server.Response.create ~headers (String asset)
 
-let handle_client pid send = Rev.start_trace_record send pid
+let handle_client pid mgr send = Rev.start_trace_record mgr send pid
 
-let handler ~sw pid : Cohttp_eio.Server.handler =
+let handler ~sw ~mgr pid : Cohttp_eio.Server.handler =
  fun request ->
   let open Frame in
   let uri = Cohttp_eio.Server.Request.resource request in
@@ -33,7 +33,7 @@ let handler ~sw pid : Cohttp_eio.Server.handler =
             | _ -> traceln "[RECV] %s" content)
       in
       let go () =
-        handle_client pid (fun content ->
+        handle_client pid mgr (fun content ->
             send_frame @@ Frame.create ~content ())
       in
       Fiber.fork ~sw go;
@@ -43,14 +43,13 @@ let handler ~sw pid : Cohttp_eio.Server.handler =
 
 let start_server env sw pid port =
   traceln "[SERV] listening on port %d" port;
-  Cohttp_eio.Server.run ~port env sw (handler ~sw pid)
+  let mgr = Eio.Stdenv.domain_mgr env in
+  Cohttp_eio.Server.run ~port env sw (handler ~sw ~mgr pid)
 
 let () =
   let pid =
     match String.split_on_char '.' Sys.argv.(1) with
-    | pid :: [ "events" ] ->
-        print_endline pid;
-        int_of_string pid
+    | pid :: [ "events" ] -> int_of_string pid
     | _ -> failwith "Bad eventring file"
   in
   Eio_main.run @@ fun env ->
