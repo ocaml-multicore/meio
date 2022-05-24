@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
       - name: Use OCaml 5.0.0+trunk
         uses: ocaml/setup-ocaml@v2
         with:
