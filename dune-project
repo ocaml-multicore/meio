@@ -24,6 +24,9 @@
    (domainslib :with-test)
    crunch
    magic-mime
+   http
+   cohttp-eio
+   cmdliner
    brr
    brr-lwd
    ezjsonm))

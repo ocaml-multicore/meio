@@ -1,4 +1,4 @@
 pin-depends: [
-  [ "ocamlfind.dev"  "git+https://github.com/dra27/ocamlfind#d2ac568ec6254e1e0bc9a8ffd8c1c5db46dac948"]
-  [ "cohttp-eio.dev" "git+https://github.com/bikallem/ocaml-cohttp#a28c65a5d4920b695fcbe0a138ea1736e454448e" ]
+  [ "http.dev" "git+https://github.com/mirage/ocaml-cohttp#ce5f271b69fe42471ede858c5b8ce8203e3c14ad" ]
+  [ "cohttp-eio.dev" "git+https://github.com/mirage/ocaml-cohttp#ce5f271b69fe42471ede858c5b8ce8203e3c14ad" ]
 ]

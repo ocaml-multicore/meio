@@ -1,4 +1,4 @@
-open Eio.Std
+open Eio
 open Cohttp_eio
 open Websocket
 
@@ -46,11 +46,48 @@ let start_server env sw pid port =
   let mgr = Eio.Stdenv.domain_mgr env in
   Cohttp_eio.Server.run ~port env (handler ~sw ~mgr pid)
 
-let () =
-  let pid =
-    match String.split_on_char '.' Sys.argv.(1) with
-    | pid :: [ "events" ] -> int_of_string pid
-    | _ -> failwith "Bad eventring file"
+let exec ~sw env exec_args port =
+  let argsl = String.split_on_char ' ' exec_args in
+  let executable_filename = List.hd argsl in
+  let env_vars = [| "OCAML_RUNTIME_EVENTS_START=1" |] in
+  let child_pid =
+    Unix.create_process_env executable_filename (Array.of_list argsl) env_vars
+      Unix.stdin Unix.stdout Unix.stderr
   in
+  Time.sleep env#clock 0.1;
+  start_server env sw (Some (".", child_pid)) port
+
+open Cmdliner
+
+let exec_args p =
+  let doc =
+    "Executable (and its arguments) to trace. If the executable takes \
+     arguments, wrap quotes around the executable and its arguments. For \
+     example, olly '<exec> <arg_1> <arg_2> ... <arg_n>'."
+  in
+  Arg.(required & pos p (some string) None & info [] ~docv:"EXECUTABLE" ~doc)
+
+let port =
+  Arg.value @@ Arg.opt Arg.int 8080
+  @@ Arg.info ~doc:"The port to run the server on" ~docv:"PORT" [ "port" ]
+
+let exec_cmd env sw =
+  let man =
+    [
+      `S Manpage.s_description;
+      `P "Execute a given command and run the server for it.";
+    ]
+  in
+  let doc = "Monitor a program with a UI in the browser." in
+  let info = Cmd.info "exec" ~doc ~man in
+  Cmd.v info Term.(const (exec ~sw env) $ exec_args 0 $ port)
+
+let () =
   Eio_main.run @@ fun env ->
-  Switch.run @@ fun sw -> start_server env sw (Some (".", pid)) 8080
+  Switch.run @@ fun sw ->
+  let main_cmd =
+    let doc = "A browser-based monitoring tool using Runtime Events" in
+    let info = Cmd.info "ec" ~doc in
+    Cmd.group info [ exec_cmd env sw ]
+  in
+  exit (Cmd.eval main_cmd)
