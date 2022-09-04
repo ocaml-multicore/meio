@@ -11,12 +11,12 @@ bug-reports: "https://github.com/patricoferris/eio-console/issues"
 depends: [
   "dune" {>= "2.9"}
   "eio_main"
+  "websocket-eio"
   "js_of_ocaml" {>= "4.0.0"}
   "domainslib" {with-test}
   "crunch"
   "magic-mime"
   "http"
-  "cohttp"
   "cohttp-eio"
   "cmdliner"
   "brr"
