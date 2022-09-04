@@ -43,4 +43,7 @@ dev-repo: "git+https://github.com/patricoferris/eio-console.git"
 pin-depends: [
   [ "http.dev" "git+https://github.com/mirage/ocaml-cohttp#ce5f271b69fe42471ede858c5b8ce8203e3c14ad" ]
   [ "cohttp-eio.dev" "git+https://github.com/mirage/ocaml-cohttp#ce5f271b69fe42471ede858c5b8ce8203e3c14ad" ]
+  [ "js_of_ocaml.dev" "git+https://github.com/ocsigen/js_of_ocaml#22f219a55d5db2f22f5f5b2278610911f6fedf52" ]
+  [ "js_of_ocaml-ppx.dev" "git+https://github.com/ocsigen/js_of_ocaml#22f219a55d5db2f22f5f5b2278610911f6fedf52" ]
+  [ "js_of_ocaml-compiler.dev" "git+https://github.com/ocsigen/js_of_ocaml#22f219a55d5db2f22f5f5b2278610911f6fedf52" ]
 ]
