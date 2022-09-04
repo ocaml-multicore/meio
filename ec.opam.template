@@ -4,4 +4,5 @@ pin-depends: [
   [ "js_of_ocaml.dev" "git+https://github.com/ocsigen/js_of_ocaml#22f219a55d5db2f22f5f5b2278610911f6fedf52" ]
   [ "js_of_ocaml-ppx.dev" "git+https://github.com/ocsigen/js_of_ocaml#22f219a55d5db2f22f5f5b2278610911f6fedf52" ]
   [ "js_of_ocaml-compiler.dev" "git+https://github.com/ocsigen/js_of_ocaml#22f219a55d5db2f22f5f5b2278610911f6fedf52" ]
+  [ "js_of_ocaml-toplevel.dev" "git+https://github.com/ocsigen/js_of_ocaml#22f219a55d5db2f22f5f5b2278610911f6fedf52" ]
 ]
