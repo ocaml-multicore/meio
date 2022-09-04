@@ -25,6 +25,7 @@
    crunch
    magic-mime
    http
+   cohttp
    cohttp-eio
    cmdliner
    brr
