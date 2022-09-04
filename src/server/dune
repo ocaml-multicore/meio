@@ -1,5 +1,6 @@
 (executable
  (name main)
+ (public_name ec)
  (libraries
   websocket-eio
   eio_main
@@ -7,6 +8,7 @@
   magic-mime
   ezjsonm
   ec.ev
+  cmdliner
   runtime_events))
 
 (subdir

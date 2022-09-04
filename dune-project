@@ -19,11 +19,14 @@
  (description "Eio-console provides an executable that allows you to monitor OCaml programs using Eventring.")
  (depends
    eio_main
-  ;  websocket-eio -- only when not vendoring...
+   websocket-eio
    (js_of_ocaml (>= 4.0.0))
    (domainslib :with-test)
    crunch
    magic-mime
+   http
+   cohttp-eio
+   cmdliner
    brr
    brr-lwd
    ezjsonm))

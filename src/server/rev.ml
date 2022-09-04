@@ -136,14 +136,20 @@ let tracing_func ws path_pid () =
   let callbacks =
     Callbacks.create ~runtime_begin ~runtime_end ~runtime_counter ~lifecycle ()
   in
-  let rec aux () =
+  let child_pid = Option.get path_pid |> snd in
+  let child_alive () =
+    match Unix.waitpid [ Unix.WNOHANG ] child_pid with
+    | 0, _ -> true
+    | p, _ when p = child_pid ->
+        Eio.traceln "Process %i has finished" child_pid;
+        false
+    | _, _ -> assert false
+  in
+  while child_alive () do
     if Atomic.get tracing then (
       ignore (read_poll cursor callbacks None);
-      Eio_unix.sleep 0.1;
-      aux ())
-    else ()
-  in
-  aux ()
+      Eio_unix.sleep 0.1)
+  done
 
 let stop_trace_record () = Atomic.set tracing false
 

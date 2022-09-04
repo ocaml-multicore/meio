@@ -11,10 +11,14 @@ bug-reports: "https://github.com/patricoferris/eio-console/issues"
 depends: [
   "dune" {>= "2.9"}
   "eio_main"
+  "websocket-eio"
   "js_of_ocaml" {>= "4.0.0"}
   "domainslib" {with-test}
   "crunch"
   "magic-mime"
+  "http"
+  "cohttp-eio"
+  "cmdliner"
   "brr"
   "brr-lwd"
   "ezjsonm"
@@ -38,6 +42,11 @@ build: [
 ]
 dev-repo: "git+https://github.com/patricoferris/eio-console.git"
 pin-depends: [
-  [ "ocamlfind.dev"  "git+https://github.com/dra27/ocamlfind#d2ac568ec6254e1e0bc9a8ffd8c1c5db46dac948"]
-  [ "cohttp-eio.dev" "git+https://github.com/bikallem/ocaml-cohttp#a28c65a5d4920b695fcbe0a138ea1736e454448e" ]
+  [ "http.dev" "git+https://github.com/mirage/ocaml-cohttp#ce5f271b69fe42471ede858c5b8ce8203e3c14ad" ]
+  [ "cohttp.dev" "git+https://github.com/mirage/ocaml-cohttp#ce5f271b69fe42471ede858c5b8ce8203e3c14ad" ]
+  [ "cohttp-eio.dev" "git+https://github.com/mirage/ocaml-cohttp#ce5f271b69fe42471ede858c5b8ce8203e3c14ad" ]
+  [ "js_of_ocaml.dev" "git+https://github.com/ocsigen/js_of_ocaml#22f219a55d5db2f22f5f5b2278610911f6fedf52" ]
+  [ "js_of_ocaml-ppx.dev" "git+https://github.com/ocsigen/js_of_ocaml#22f219a55d5db2f22f5f5b2278610911f6fedf52" ]
+  [ "js_of_ocaml-compiler.dev" "git+https://github.com/ocsigen/js_of_ocaml#22f219a55d5db2f22f5f5b2278610911f6fedf52" ]
+  [ "js_of_ocaml-toplevel.dev" "git+https://github.com/ocsigen/js_of_ocaml#22f219a55d5db2f22f5f5b2278610911f6fedf52" ]
 ]
