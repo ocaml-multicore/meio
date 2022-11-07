@@ -1,3 +1,0 @@
-(library
- (name ec_ev)
- (public_name ec.ev))

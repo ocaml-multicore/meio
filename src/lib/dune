@@ -1,0 +1,7 @@
+(library
+ (name eio_console)
+ (public_name ec)
+ (foreign_stubs
+  (language c)
+  (names eio_console_stubs))
+ (libraries eio eio.utils runtime_events ptime nottui))

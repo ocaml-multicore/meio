@@ -1,4 +1,0 @@
-(executable
- (name index)
- (modes js)
- (libraries brr brr-lwd dygraph ec_js))
