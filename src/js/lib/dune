@@ -1,3 +1,0 @@
-(library
- (name ec_js)
- (libraries brr brr-lwd dygraph ec.ev))

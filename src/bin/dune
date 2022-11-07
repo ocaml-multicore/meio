@@ -1,0 +1,4 @@
+(executable
+ (name ec)
+ (public_name ec)
+ (libraries ec eio_luv))
