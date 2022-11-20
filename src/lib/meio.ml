@@ -55,10 +55,12 @@ module Task = struct
 end
 
 module Task_table = struct
-  type t = Task.t Lwd_table.t
+  type sort = Domain | Id | Busy | No_sort
 
-  let create () = Lwd_table.make ()
-  let add (tbl : t) task = Lwd_table.append' tbl task
+  (* Invariant, the lwd_table is always sorted *)
+  type t = { sort : sort; table : Task.t Lwd_table.t }
+
+  let create () = { table = Lwd_table.make (); sort = Busy }
 
   let filter f row =
     let rec loop = function
@@ -81,28 +83,71 @@ module Task_table = struct
     in
     loop row
 
-  let remove_by_id tbl id =
+  let find_first f row =
+    let rec loop = function
+      | None -> None
+      | Some row -> (
+          match Lwd_table.get row with
+          | None -> loop (Lwd_table.next row)
+          | Some v -> if f v then Some row else loop (Lwd_table.next row))
+    in
+    loop row
+
+  let remove_by_id { table; _ } id =
     filter
       (fun t ->
         match Lwd_table.get t with
         | Some t -> Int.equal t.Task.id id
         | None -> true)
-      (Lwd_table.first tbl)
+      (Lwd_table.first table)
 
-  let update_loc tbl id info =
+  let update_loc { table; _ } id info =
     map
       (fun t ->
         if Int.equal t.Task.id id then { t with info = info :: t.info } else t)
-      (Lwd_table.first tbl)
+      (Lwd_table.first table)
 
-  let update_active tbl ~domain ~id =
+  let update_active { table; _ } ~domain ~id =
     map
       (fun t ->
         if Int.equal t.Task.id id && Int.equal t.Task.domain domain then
           { t with active = true; entered_count = t.entered_count + 1 }
         else if Int.equal t.Task.domain domain then { t with active = false }
         else t)
-      (Lwd_table.first tbl)
+      (Lwd_table.first table)
+
+  let find_sort_row t v = function
+    | Busy -> Int64.compare t.Task.busy v.Task.busy < 0
+    | _ -> true
+
+  let add ({ table; sort } : t) task =
+    let first =
+      find_first (fun v -> find_sort_row task v sort) (Lwd_table.first table)
+    in
+    (* Hmmmm *)
+    match first with
+    | None -> Lwd_table.append' table task
+    | Some row -> ignore (Lwd_table.before ~set:task row)
+
+  let refresh_active_tasks diff ({ table; _ } as t) =
+    let rec collect_and_remove acc = function
+      | None -> List.rev acc
+      | Some row -> (
+          match Lwd_table.get row with
+          | None -> collect_and_remove acc (Lwd_table.next row)
+          | Some (task : Task.t) ->
+              let next = Lwd_table.next row in
+              let acc =
+                if task.active then (
+                  task.busy <- Int64.add task.busy diff;
+                  Lwd_table.remove row;
+                  task :: acc)
+                else acc
+              in
+              collect_and_remove acc next)
+    in
+    let active = collect_and_remove [] (Lwd_table.first table) in
+    List.iter (add t) active
 end
 
 module Console = struct
@@ -118,7 +163,9 @@ module Console = struct
     Lwd.var (ts, ts)
 
   let set_prev_now now =
-    let _, old = Lwd.peek prev_now in
+    let really_old, old = Lwd.peek prev_now in
+    (* Update active tasks *)
+    Task_table.refresh_active_tasks Int64.(sub old really_old) tasks;
     Lwd.set prev_now (old, now)
 
   let width = 12
@@ -138,14 +185,10 @@ module Console = struct
 
   let green = W.string ~attr:Notty.A.(bg green)
 
-  let render_task (prev, now) _
-      ({ Task.id; domain; start; info; active; busy; _ } as t) =
-    let busy =
-      if active then (
-        t.busy <- Int64.add busy Int64.(sub now prev);
-        t.busy)
-      else busy
-    in
+  let render_task now _ ({ Task.id; domain; start; info; busy; _ } as t) =
+    (* let busy =
+
+       in *)
     let domain = W.int domain in
     let id = W.int id in
     let total = Int64.sub now start in
@@ -171,10 +214,10 @@ module Console = struct
   let init_widths = List.init (List.length header) (fun _ -> width)
 
   let root () =
-    let task_list : ui list list Lwd.t =
+    let task_list =
       Lwd.bind
-        ~f:(fun now ->
-          Lwd_table.map_reduce (render_task now) ui_monoid_list tasks)
+        ~f:(fun (_, now) ->
+          Lwd_table.map_reduce (render_task now) ui_monoid_list tasks.table)
         (Lwd.get prev_now)
     in
     let widths =
@@ -221,11 +264,30 @@ module Console = struct
   let switch_to ~id ~domain = Task_table.update_active tasks ~id ~domain
 end
 
+let screens = [ (`Help, Lwd.return Help.help); (`Main, Console.root ()) ]
+
 let ui handle =
   let module Queue = Eio_utils.Lf_queue in
   let q = Queue.create () in
   let cursor = Runtime_events.create_cursor (Some handle) in
   let callbacks = task_events q in
+  let screen = Lwd.var `Main in
+  let ui =
+    Lwd.bind ~f:(fun screen -> List.assoc screen screens) (Lwd.get screen)
+  in
+  let ui =
+    Lwd.map
+      ~f:
+        (Nottui.Ui.event_filter (function
+          | `Key (`ASCII 'h', _) ->
+              Lwd.set screen `Help;
+              `Handled
+          | `Key (`ASCII 'm', _) ->
+              Lwd.set screen `Main;
+              `Handled
+          | _ -> `Unhandled))
+      ui
+  in
   Nottui.Ui_loop.run
     ~tick:(fun () ->
       Console.set_prev_now (current_timestamp ());
@@ -239,4 +301,4 @@ let ui handle =
         | Some (`Resolved (_v, _, _)) -> () (* Console.remove_task v *)
         | Some (`Labelled (i, l)) -> Console.update_loc (i :> int) l
       done)
-    ~tick_period:0.1 (Console.root ())
+    ~tick_period:0.1 ui

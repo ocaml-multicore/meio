@@ -1,4 +1,4 @@
 (executable
- (name ec)
- (public_name ec)
- (libraries ec eio_luv))
+ (name meio)
+ (public_name meio)
+ (libraries meio eio_luv))

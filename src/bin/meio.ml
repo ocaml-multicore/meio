@@ -19,7 +19,7 @@ let run _stdenv exec_args =
   let child_pid = Process.spawn ~env executable_filename argsl in
   Unix.sleepf 0.2;
   let handle = (tmp_dir, Process.pid child_pid) in
-  Eio_console.ui handle;
+  Meio.ui handle;
   let ring_file =
     Filename.concat tmp_dir (string_of_int (Process.pid child_pid) ^ ".events")
   in
