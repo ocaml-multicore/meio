@@ -95,12 +95,13 @@ module Task_table = struct
         if Int.equal t.Task.id id then { t with info = info :: t.info } else t)
       (Lwd_table.first tbl)
 
-  let update_active tbl id =
+  let update_active tbl ~domain ~id =
     map
       (fun t ->
-        if Int.equal t.Task.id id then
+        if Int.equal t.Task.id id && Int.equal t.Task.domain domain then
           { t with active = true; entered_count = t.entered_count + 1 }
-        else { t with active = false })
+        else if Int.equal t.Task.domain domain then { t with active = false }
+        else t)
       (Lwd_table.first tbl)
 end
 
@@ -217,7 +218,7 @@ module Console = struct
 
   let remove_task i = Task_table.remove_by_id tasks i
   let update_loc i id = Task_table.update_loc tasks i id
-  let switch_to i = Task_table.update_active tasks i
+  let switch_to ~id ~domain = Task_table.update_active tasks ~id ~domain
 end
 
 let ui handle =
@@ -233,7 +234,8 @@ let ui handle =
         match Queue.pop q with
         | None -> ()
         | Some (`Created v) -> Console.add_tasks v
-        | Some (`Switch (v, _, _)) -> Console.switch_to (v :> int)
+        | Some (`Switch (v, domain, _)) ->
+            Console.switch_to ~id:(v :> int) ~domain
         | Some (`Resolved (_v, _, _)) -> () (* Console.remove_task v *)
         | Some (`Labelled (i, l)) -> Console.update_loc (i :> int) l
       done)
