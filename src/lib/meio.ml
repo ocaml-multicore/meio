@@ -39,8 +39,11 @@ module Task = struct
     mutable busy : int64;
     mutable entered_count : int;
     mutable info : string list; (* include location *)
+    mutable selected : bool;
     active : bool;
   }
+
+  let equal a b = a.id = b.id && a.domain = b.domain
 
   let create ~id ~domain start =
     {
@@ -50,6 +53,7 @@ module Task = struct
       busy = 0L;
       entered_count = 0;
       info = [];
+      selected = false;
       active = false;
     }
 end
@@ -82,6 +86,18 @@ module Task_table = struct
           loop next
     in
     loop row
+
+  let iter_with_prev f row =
+    let rec loop acc = function
+      | None -> ()
+      | Some row ->
+          let next = Lwd_table.next row in
+          let current = Option.get (Lwd_table.get row) in
+          f ~prev:acc current;
+          (* Lwd_table.set row t; *)
+          loop (Some current) next
+    in
+    loop None row
 
   let find_first f row =
     let rec loop = function
@@ -120,14 +136,16 @@ module Task_table = struct
     | Busy -> Int64.compare t.Task.busy v.Task.busy < 0
     | _ -> true
 
-  let add ({ table; sort } : t) task =
+  let add ({ table; sort; _ } : t) task =
+    let set_selected = Option.is_none @@ Lwd_table.first table in
     let first =
       find_first (fun v -> find_sort_row task v sort) (Lwd_table.first table)
     in
     (* Hmmmm *)
-    match first with
+    (match first with
     | None -> Lwd_table.append' table task
-    | Some row -> ignore (Lwd_table.before ~set:task row)
+    | Some row -> ignore (Lwd_table.before ~set:task row));
+    if set_selected then task.selected <- true
 
   let refresh_active_tasks diff ({ table; _ } as t) =
     let rec collect_and_remove acc = function
@@ -168,6 +186,28 @@ module Console = struct
     Task_table.refresh_active_tasks Int64.(sub old really_old) tasks;
     Lwd.set prev_now (old, now)
 
+  let set_selected = function
+    | `Next ->
+        let set = ref false in
+        Task_table.iter_with_prev (fun ~prev c ->
+            if !set then ()
+            else
+              match prev with
+              | None -> ()
+              | Some p ->
+                  if p.Task.selected then (
+                    p.selected <- false;
+                    c.Task.selected <- true;
+                    set := true))
+    | `Prev ->
+        Task_table.iter_with_prev (fun ~prev c ->
+            match prev with
+            | None -> ()
+            | Some p ->
+                if c.Task.selected then (
+                  c.selected <- false;
+                  p.selected <- true))
+
   let width = 12
   let padding = 3
 
@@ -180,26 +220,29 @@ module Console = struct
     let new_widths = List.map2 f ws acc in
     new_widths
 
-  let resize_uis widths uis =
-    List.map2 (fun w ui -> Ui.resize ~w ~pad:gravity_pad ui) widths uis
-
   let green = W.string ~attr:Notty.A.(bg green)
+  let seleted_attr = Notty.A.(bg cyan)
 
-  let render_task now _ ({ Task.id; domain; start; info; busy; _ } as t) =
-    (* let busy =
+  let resize_uis widths (selected, uis) =
+    let bg = if selected then Some seleted_attr else None in
+    List.map2 (fun w ui -> Ui.resize ?bg ~w ~pad:gravity_pad ui) widths uis
 
-       in *)
-    let domain = W.int domain in
-    let id = W.int id in
+  let render_task now _
+      ({ Task.id; domain; start; info; busy; selected; _ } as t) =
+    let attr =
+      match selected with false -> None | true -> Some seleted_attr
+    in
+    let domain = W.int ?attr domain in
+    let id = W.int ?attr id in
     let total = Int64.sub now start in
     let idle = max 0L (Int64.sub total busy) in
-    let busy = W.string @@ Fmt.(to_to_string uint64_ns_span busy) in
-    let idle = W.string @@ Fmt.(to_to_string uint64_ns_span idle) in
-    let loc = W.string (String.concat "\n" info) in
-    let entered = W.int t.entered_count in
-    [ [ domain; id; busy; idle; entered; loc ] ]
+    let busy = W.string ?attr @@ Fmt.(to_to_string uint64_ns_span busy) in
+    let idle = W.string ?attr @@ Fmt.(to_to_string uint64_ns_span idle) in
+    let loc = W.string ?attr (String.concat "\n" info) in
+    let entered = W.int ?attr t.entered_count in
+    [ (Option.is_some attr, [ domain; id; busy; idle; entered; loc ]) ]
 
-  let ui_monoid_list : ui list list Lwd_utils.monoid = ([], List.append)
+  let ui_monoid_list : (bool * ui list) list Lwd_utils.monoid = ([], List.append)
 
   let header =
     [
@@ -225,7 +268,7 @@ module Console = struct
         ~f:(fun uis ->
           let widths =
             List.fold_left
-              (fun acc w -> set_column_widths acc w)
+              (fun acc (_, w) -> set_column_widths acc w)
               init_widths uis
           in
           widths)
@@ -253,7 +296,8 @@ module Console = struct
             w header)
       |> Lwd.map ~f:(List.fold_left Ui.join_x Ui.empty)
     in
-    Lwd_utils.pack Ui.pack_y [ table_header; table |> W.scroll_area ]
+    let footer = Lwd_utils.pack Ui.pack_x (List.map Lwd.pure Help.footer) in
+    Lwd_utils.pack Ui.pack_y [ table_header; table |> W.scroll_area; footer ]
 
   let add_tasks (id, domain, ts) =
     let task = Task.create ~id ~domain (Runtime_events.Timestamp.to_int64 ts) in
@@ -279,6 +323,12 @@ let ui handle =
     Lwd.map
       ~f:
         (Nottui.Ui.event_filter (function
+          | `Key (`Arrow `Down, _) ->
+              Console.set_selected `Prev (Lwd_table.first Console.tasks.table);
+              `Handled
+          | `Key (`Arrow `Up, _) ->
+              Console.set_selected `Next (Lwd_table.first Console.tasks.table);
+              `Handled
           | `Key (`ASCII 'h', _) ->
               Lwd.set screen `Help;
               `Handled
