@@ -3,4 +3,4 @@ meio
 
 *Status: Very, very experimental & WIP*
 
-[![Eio console in the terminal](https://asciinema.org/a/4TNwR6WLPD5v9L2Q7CQILutCT.svg)](https://asciinema.org/a/4TNwR6WLPD5v9L2Q7CQILutCT)
+[![Meio](https://asciinema.org/a/8D02o1oePHUZ3hirsbbLT294R.svg)](https://asciinema.org/a/8D02o1oePHUZ3hirsbbLT294R)
