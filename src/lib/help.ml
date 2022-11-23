@@ -1,6 +1,11 @@
 open Nottui
 module W = Nottui_widgets
 
+let key_help c msg =
+  W.fmt ~attr:Notty.A.(bg (rgb ~r:4 ~g:2 ~b:0)) "[%c] %s" c msg
+
+let footer = [ key_help 'h' "help"; Ui.space 5 0; key_help 'm' "main page" ]
+
 let help : ui =
   Ui.hcat
     [
