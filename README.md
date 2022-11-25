@@ -3,4 +3,4 @@ meio
 
 *Status: Very, very experimental & WIP*
 
-[![Meio](https://asciinema.org/a/8D02o1oePHUZ3hirsbbLT294R.svg)](https://asciinema.org/a/8D02o1oePHUZ3hirsbbLT294R)
+[![Meio on asciicast](https://asciinema.org/a/6XQrLUDq7hOmA5BFb9iJcb0qH.svg)](https://asciinema.org/a/6XQrLUDq7hOmA5BFb9iJcb0qH)
