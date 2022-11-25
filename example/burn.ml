@@ -5,7 +5,7 @@ let woops_sleepy ~clock =
   Fiber.fork ~loc:__LOC__ ~sw (fun () ->
       (* Woops! Wrong sleep function, we blocked the fiber *)
       traceln "Woops! Blocked by Unix.sleepf";
-      Unix.sleepf 10.;
+      Unix.sleepf 5.;
       Time.sleep clock 10.)
 
 let spawn ~clock min max =

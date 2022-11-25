@@ -16,6 +16,7 @@ depends: [
   "ptime"
   "nottui"
   "cmdliner"
+  "hdr_histogram"
   "odoc" {with-doc}
 ]
 build: [
