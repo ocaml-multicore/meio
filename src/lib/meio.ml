@@ -29,35 +29,6 @@ let task_events q =
   |> add_callback Runtime_events.Type.counter id_callback
   |> add_callback Ctf.labelled_type id_label_callback
 
-module Task = struct
-  module W = Nottui_widgets
-
-  type t = {
-    id : int;
-    domain : int;
-    start : int64;
-    mutable busy : int64;
-    mutable entered_count : int;
-    mutable info : string list; (* include location *)
-    mutable selected : bool;
-    active : bool;
-  }
-
-  let equal a b = a.id = b.id && a.domain = b.domain
-
-  let create ~id ~domain start =
-    {
-      id;
-      domain;
-      start;
-      busy = 0L;
-      entered_count = 0;
-      info = [];
-      selected = false;
-      active = false;
-    }
-end
-
 module Task_table = struct
   type sort = Domain | Id | Busy | No_sort
 
@@ -127,13 +98,14 @@ module Task_table = struct
     map
       (fun t ->
         if Int.equal t.Task.id id && Int.equal t.Task.domain domain then
-          { t with active = true; entered_count = t.entered_count + 1 }
+          { t with active = true; busy = ref 0L :: t.busy }
         else if Int.equal t.Task.domain domain then { t with active = false }
         else t)
       (Lwd_table.first table)
 
   let find_sort_row t v = function
-    | Busy -> Int64.compare t.Task.busy v.Task.busy < 0
+    | Busy ->
+        Int64.compare (Task.get_current_busy t) (Task.get_current_busy v) < 0
     | _ -> true
 
   let add ({ table; sort; _ } : t) task =
@@ -157,7 +129,8 @@ module Task_table = struct
               let next = Lwd_table.next row in
               let acc =
                 if task.active then (
-                  task.busy <- Int64.add task.busy diff;
+                  let busy = List.hd task.busy in
+                  busy := Int64.add !busy diff;
                   Lwd_table.remove row;
                   task :: acc)
                 else acc
@@ -235,11 +208,12 @@ module Console = struct
     let domain = W.int ?attr domain in
     let id = W.int ?attr id in
     let total = Int64.sub now start in
-    let idle = max 0L (Int64.sub total busy) in
-    let busy = W.string ?attr @@ Fmt.(to_to_string uint64_ns_span busy) in
+    let total_busy = List.fold_left (fun acc v -> Int64.add acc !v) 0L busy in
+    let idle = max 0L (Int64.sub total total_busy) in
+    let busy = W.string ?attr @@ Fmt.(to_to_string uint64_ns_span total_busy) in
     let idle = W.string ?attr @@ Fmt.(to_to_string uint64_ns_span idle) in
     let loc = W.string ?attr (String.concat "\n" info) in
-    let entered = W.int ?attr t.entered_count in
+    let entered = W.int ?attr (List.length t.busy) in
     [ (Option.is_some attr, [ domain; id; busy; idle; entered; loc ]) ]
 
   let ui_monoid_list : (bool * ui list) list Lwd_utils.monoid = ([], List.append)
@@ -308,7 +282,21 @@ module Console = struct
   let switch_to ~id ~domain = Task_table.update_active tasks ~id ~domain
 end
 
-let screens = [ (`Help, Lwd.return Help.help); (`Main, Console.root ()) ]
+let get_selected () =
+  Task_table.find_first
+    (fun v -> v.Task.selected)
+    (Lwd_table.first Console.tasks.table)
+  |> fun v -> Option.bind v Lwd_table.get |> Option.get
+
+let screens =
+  [
+    (`Help, fun () -> Lwd.return Help.help);
+    (`Main, fun () -> Console.root ());
+    ( `Task,
+      fun () ->
+        Nottui_widgets.scroll_area @@ Lwd.return @@ Task.ui @@ get_selected ()
+    );
+  ]
 
 let ui handle =
   let module Queue = Eio_utils.Lf_queue in
@@ -317,26 +305,31 @@ let ui handle =
   let callbacks = task_events q in
   let screen = Lwd.var `Main in
   let ui =
-    Lwd.bind ~f:(fun screen -> List.assoc screen screens) (Lwd.get screen)
+    Lwd.bind ~f:(fun screen -> (List.assoc screen screens) ()) (Lwd.get screen)
   in
   let ui =
-    Lwd.map
-      ~f:
-        (Nottui.Ui.event_filter (function
-          | `Key (`Arrow `Down, _) ->
-              Console.set_selected `Prev (Lwd_table.first Console.tasks.table);
-              `Handled
-          | `Key (`Arrow `Up, _) ->
-              Console.set_selected `Next (Lwd_table.first Console.tasks.table);
-              `Handled
-          | `Key (`ASCII 'h', _) ->
-              Lwd.set screen `Help;
-              `Handled
-          | `Key (`ASCII 'm', _) ->
-              Lwd.set screen `Main;
-              `Handled
-          | _ -> `Unhandled))
-      ui
+    Lwd.map2
+      ~f:(fun ui s ->
+        Nottui.Ui.event_filter
+          (function
+            | `Key (`Arrow `Down, _) when s = `Main ->
+                Console.set_selected `Prev (Lwd_table.first Console.tasks.table);
+                `Handled
+            | `Key (`Arrow `Up, _) when s = `Main ->
+                Console.set_selected `Next (Lwd_table.first Console.tasks.table);
+                `Handled
+            | `Key (`ASCII 'h', _) ->
+                Lwd.set screen `Help;
+                `Handled
+            | `Key (`ASCII 'e', _) ->
+                Lwd.set screen `Task;
+                `Handled
+            | `Key (`ASCII 'm', _) ->
+                Lwd.set screen `Main;
+                `Handled
+            | _ -> `Unhandled)
+          ui)
+      ui (Lwd.get screen)
   in
   Nottui.Ui_loop.run
     ~tick:(fun () ->
