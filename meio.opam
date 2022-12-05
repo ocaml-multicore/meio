@@ -11,7 +11,6 @@ bug-reports: "https://github.com/patricoferris/eio-console/issues"
 depends: [
   "dune" {>= "2.9"}
   "eio_main"
-  "eio_luv"
   "eio"
   "ptime"
   "nottui"
