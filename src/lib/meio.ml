@@ -6,9 +6,12 @@ let timestamp s = Runtime_events.Timestamp.to_int64 s |> Int64.to_string
 (* Returns the current value of a counter that increments once per nanosecond. *)
 external current_timestamp : unit -> int64 = "caml_eio_time_counter"
 
-let task_events q =
+let task_events ~latency_begin ~latency_end q =
   let module Queue = Eio_utils.Lf_queue in
-  let evs = Runtime_events.Callbacks.create () in
+  let evs =
+    Runtime_events.Callbacks.create ~runtime_begin:latency_begin
+      ~runtime_end:latency_end ()
+  in
   let id_event_callback d ts c ((i : Ctf.id), v) =
     match (Runtime_events.User.tag c, v) with
     | Ctf.Created, Ctf.Task -> Queue.push q (`Created ((i :> int), d, ts))
@@ -288,7 +291,7 @@ let get_selected () =
     (Lwd_table.first Console.tasks.table)
   |> fun v -> Option.bind v Lwd_table.get |> Option.get
 
-let screens =
+let screens duration hist =
   [
     (`Help, fun () -> Lwd.return Help.help);
     (`Main, fun () -> Console.root ());
@@ -296,6 +299,7 @@ let screens =
       fun () ->
         Nottui_widgets.scroll_area @@ Lwd.return @@ Task.ui @@ get_selected ()
     );
+    (`Gc, fun () -> Latency.ui hist duration);
   ]
 
 let ui handle =
@@ -304,6 +308,9 @@ let ui handle =
   let cursor = Runtime_events.create_cursor (Some handle) in
   let callbacks = task_events q in
   let screen = Lwd.var `Main in
+  let duration = Lwd.var 0L in
+  let hist, latency_begin, latency_end = Latency.init () in
+  let screens = screens duration hist in
   let ui =
     Lwd.bind ~f:(fun screen -> (List.assoc screen screens) ()) (Lwd.get screen)
   in
@@ -327,6 +334,9 @@ let ui handle =
             | `Key (`ASCII 'm', _) ->
                 Lwd.set screen `Main;
                 `Handled
+            | `Key (`ASCII 'g', _) ->
+                Lwd.set screen `Gc;
+                `Handled
             | _ -> `Unhandled)
           ui)
       ui (Lwd.get screen)
@@ -334,14 +344,23 @@ let ui handle =
   Nottui.Ui_loop.run
     ~tick:(fun () ->
       Console.set_prev_now (current_timestamp ());
-      let _ = Runtime_events.read_poll cursor callbacks None in
+      let now = Lwd.peek duration in
+      Lwd.set duration
+        ( Lwd.peek Console.prev_now |> fun (p, n) ->
+          Int64.add now (Int64.sub n p) );
+      let _ =
+        Runtime_events.read_poll cursor
+          (callbacks ~latency_begin ~latency_end)
+          None
+      in
       while not (Queue.is_empty q) do
         match Queue.pop q with
         | None -> ()
         | Some (`Created v) -> Console.add_tasks v
         | Some (`Switch (v, domain, _)) ->
             Console.switch_to ~id:(v :> int) ~domain
-        | Some (`Resolved (_v, _, _)) -> () (* Console.remove_task v *)
+        | Some (`Resolved (_v, _, _)) ->
+            () (* XXX: When to do this Console.remove_task v ?  *)
         | Some (`Labelled (i, l)) -> Console.update_loc (i :> int) l
       done)
-    ~tick_period:0.1 ui
+    ~tick_period:0.15 ui

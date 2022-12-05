@@ -9,10 +9,18 @@ let woops_sleepy ~clock =
       Time.sleep clock 10.)
 
 let spawn ~clock min max =
+  (* Some GC action *)
+  for _i = 0 to 100 do
+    ignore (Sys.opaque_identity @@ Array.init 1000000 float_of_int)
+  done;
   Switch.run @@ fun sw ->
   for i = min to max do
     Fiber.fork ~sw (fun () ->
         for _i = 0 to max do
+          (* Some more GC action *)
+          for _i = 0 to 100 do
+            ignore (Sys.opaque_identity @@ Array.init 1000000 float_of_int)
+          done;
           Time.sleep clock 0.2;
           Fiber.yield ()
         done;
