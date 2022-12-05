@@ -19,9 +19,10 @@ let run _stdenv exec_args =
   Unix.sleepf 0.2;
   let handle = (tmp_dir, child_pid) in
   Meio.ui handle;
+  Unix.kill child_pid Sys.sigkill;
   let ring_file =
     Filename.concat tmp_dir (string_of_int child_pid ^ ".events")
   in
   Unix.unlink ring_file
 
-let () = Eio_luv.run @@ fun stdenv -> run stdenv Sys.argv.(1)
+let () = Eio_main.run @@ fun stdenv -> run stdenv Sys.argv.(1)
