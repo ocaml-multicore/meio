@@ -23,6 +23,8 @@ jobs:
           OPAMROOT: /home/opam/.opam
       - name: Checkout
         uses: actions/checkout@v2
+        with:
+          submodules: true
       - name: Meio Deps 🐈‍⬛
         run: opam pin . -yn && opam install . --deps-only --with-test
         env:
