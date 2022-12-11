@@ -1,6 +1,6 @@
 module Ctf = Eio.Private.Ctf
 
-let add_callback = Runtime_events.Callbacks.add
+let add_callback = Runtime_events.Callbacks.add_user_event
 let timestamp s = Runtime_events.Timestamp.to_int64 s |> Int64.to_string
 
 (* Returns the current value of a counter that increments once per nanosecond. *)
