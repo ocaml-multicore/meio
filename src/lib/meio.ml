@@ -29,7 +29,7 @@ let task_events ~latency_begin ~latency_end q =
     | _ -> ()
   in
   add_callback Ctf.created_type id_event_callback evs
-  |> add_callback Runtime_events.Type.counter id_callback
+  |> add_callback Runtime_events.Type.int id_callback
   |> add_callback Ctf.labelled_type id_label_callback
 
 module Task_table = struct
