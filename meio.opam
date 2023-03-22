@@ -9,7 +9,8 @@ license: "MIT"
 homepage: "https://github.com/patricoferris/eio-console"
 bug-reports: "https://github.com/patricoferris/eio-console/issues"
 depends: [
-  "dune" {>= "2.9"}
+  "ocaml" {>= "5.1.0+trunk"}
+  "dune" {>= "3.2"}
   "eio_main"
   "eio"
   "astring"
