@@ -7,6 +7,8 @@ let add_tasks (id, domain, ts) =
 
 let remove_task i = Task_table.remove_by_id tasks i
 let update_loc i id = Task_table.update_loc tasks i id
+let update_logs i id = Task_table.update_logs tasks i id
+let update_name i id = Task_table.update_name tasks i id
 
 let switch_to ~id ~domain ts =
   Task_table.update_active tasks ~id ~domain

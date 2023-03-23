@@ -9,7 +9,9 @@ type t = {
   domain : int;
   start : int64;
   busy : int64 list;
-  mutable info : string list; (* include location *)
+  name : string list;
+  loc : string list;
+  logs : string list;
   mutable selected : bool;
   status : status;
 }
@@ -18,7 +20,17 @@ let get_current_busy t = match t.busy with [] -> 0L | x :: _ -> x
 let equal a b = a.id = b.id && a.domain = b.domain
 
 let create ~id ~domain start =
-  { id; domain; start; busy = []; info = []; selected = false; status = Paused }
+  {
+    id;
+    domain;
+    start;
+    busy = [];
+    logs = [];
+    name = [];
+    loc = [];
+    selected = false;
+    status = Paused;
+  }
 
 let percentiles =
   [ 25.0; 50.0; 60.0; 70.0; 80.0; 90.0; 95.0; 99.0; 99.9; 99.99 ]
