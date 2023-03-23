@@ -22,7 +22,9 @@ let task_events ~latency_begin ~latency_end q =
   in
   let id_label_callback _d _ts c (i, s) =
     match Runtime_events.User.tag c with
-    | Ctf.Label -> Queue.push q (`Labelled (i, s))
+    | Ctf.Name -> Queue.push q (`Labelled (i, s))
+    | Ctf.Log -> Queue.push q (`Labelled (i, s))
+    | Ctf.Loc -> Queue.push q (`Labelled (i, s))
     | _ -> ()
   in
   add_callback Ctf.created_type id_event_callback evs
