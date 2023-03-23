@@ -62,12 +62,16 @@ let update_loc { table; _ } id info =
       if Int.equal t.Task.id id then { t with info = info :: t.info } else t)
     (Lwd_table.first table)
 
-let update_active { table; _ } ~domain ~id =
+let update_active { table; _ } ~domain ~id ts =
   map
     (fun t ->
       if Int.equal t.Task.id id && Int.equal t.Task.domain domain then
-        { t with active = true; busy = ref 0L :: t.busy }
-      else if Int.equal t.Task.domain domain then { t with active = false }
+        { t with active = Some ts }
+      else if Int.equal t.Task.domain domain then
+        match t.active with
+        | None -> t
+        | Some start ->
+            { t with active = None; busy = Int64.sub ts start :: t.busy }
       else t)
     (Lwd_table.first table)
 
@@ -86,24 +90,3 @@ let add ({ table; sort; _ } : t) task =
   | None -> Lwd_table.append' table task
   | Some row -> ignore (Lwd_table.before ~set:task row));
   if set_selected then task.selected <- true
-
-let refresh_active_tasks diff ({ table; _ } as t) =
-  let rec collect_and_remove acc = function
-    | None -> List.rev acc
-    | Some row -> (
-        match Lwd_table.get row with
-        | None -> collect_and_remove acc (Lwd_table.next row)
-        | Some (task : Task.t) ->
-            let next = Lwd_table.next row in
-            let acc =
-              if task.active then (
-                let busy = List.hd task.busy in
-                busy := Int64.add !busy diff;
-                Lwd_table.remove row;
-                task :: acc)
-              else acc
-            in
-            collect_and_remove acc next)
-  in
-  let active = collect_and_remove [] (Lwd_table.first table) in
-  List.iter (add t) active
