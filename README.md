@@ -9,9 +9,10 @@ If you want to take this for a spin, you'll need to install an OCaml compiler th
 
 ### Building meio
 
+In a new switch:
 ```
 $ opam repo add custom-events https://github.com/TheLortex/custom-events-opam-repository.git
-$ opam switch create --no-install . --packages ocaml-variants.5.0.0+custom-events
+$ opam switch create --no-install custom-events --packages ocaml-variants.5.0.0+custom-events --repositories=custom-events,default
 $ opam install --deps-only .
 $ dune build
 ```
