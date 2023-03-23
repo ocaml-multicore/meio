@@ -11,3 +11,6 @@ let update_loc i id = Task_table.update_loc tasks i id
 let switch_to ~id ~domain ts =
   Task_table.update_active tasks ~id ~domain
     (Runtime_events.Timestamp.to_int64 ts)
+
+let resolved v ts =
+  Task_table.set_resolved tasks v (Runtime_events.Timestamp.to_int64 ts)
