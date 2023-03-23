@@ -127,9 +127,9 @@ let ui handle =
         match Queue.pop q with
         | None -> ()
         | Some (`Created v) -> State.add_tasks v
-        | Some (`Switch (v, domain, _)) ->
-            State.switch_to ~id:(v :> int) ~domain
-        | Some (`Suspend (domain, _)) -> State.switch_to ~id:(-1) ~domain
+        | Some (`Switch (v, domain, ts)) ->
+            State.switch_to ~id:(v :> int) ~domain ts
+        | Some (`Suspend (domain, ts)) -> State.switch_to ~id:(-1) ~domain ts
         | Some (`Resolved (_v, _, _)) ->
             () (* XXX: When to do this State.remove_task v ?  *)
         | Some (`Labelled (i, l)) -> State.update_loc (i :> int) l

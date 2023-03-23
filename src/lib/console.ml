@@ -9,8 +9,6 @@ let prev_now =
 
 let set_prev_now now =
   let really_old, old = Lwd.peek prev_now in
-  (* Update active tasks *)
-  Task_table.refresh_active_tasks Int64.(sub old really_old) State.tasks;
   Lwd.set prev_now (old, now)
 
 let set_selected = function
@@ -54,13 +52,17 @@ let resize_uis widths (selected, uis) =
   let bg = if selected then Some seleted_attr else None in
   List.map2 (fun w ui -> Ui.resize ?bg ~w ~pad:gravity_pad ui) widths uis
 
-let render_task now _ ({ Task.id; domain; start; info; busy; selected; _ } as t)
+let render_task now _ ({ Task.id; domain; start; info; busy; selected; active; _ } as t)
     =
   let attr = match selected with false -> None | true -> Some seleted_attr in
   let domain = W.int ?attr domain in
   let id = W.int ?attr id in
   let total = Int64.sub now start in
-  let total_busy = List.fold_left (fun acc v -> Int64.add acc !v) 0L busy in
+  let active_busy = match active with
+    | None -> 0L
+    | Some v -> Int64.sub now v
+  in
+  let total_busy = List.fold_left Int64.add active_busy busy in
   let idle = max 0L (Int64.sub total total_busy) in
   let busy = W.string ?attr @@ Fmt.(to_to_string uint64_ns_span total_busy) in
   let idle = W.string ?attr @@ Fmt.(to_to_string uint64_ns_span idle) in
