@@ -130,8 +130,9 @@ let ui handle =
         | Some (`Switch (v, domain, ts)) ->
             State.switch_to ~id:(v :> int) ~domain ts
         | Some (`Suspend (domain, ts)) -> State.switch_to ~id:(-1) ~domain ts
-        | Some (`Resolved (_v, _, _)) ->
-            () (* XXX: When to do this State.remove_task v ?  *)
+        | Some (`Resolved (v, _, ts)) ->
+            State.resolved (v: int) ts
+          (* XXX: When to do this State.remove_task v ?  *)
         | Some (`Labelled (i, l)) -> State.update_loc (i :> int) l
       done)
     ~tick_period:0.05 ui;

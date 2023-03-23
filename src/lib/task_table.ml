@@ -66,13 +66,19 @@ let update_active { table; _ } ~domain ~id ts =
   map
     (fun t ->
       if Int.equal t.Task.id id && Int.equal t.Task.domain domain then
-        { t with active = Some ts }
+        { t with status = Active ts }
       else if Int.equal t.Task.domain domain then
-        match t.active with
-        | None -> t
-        | Some start ->
-            { t with active = None; busy = Int64.sub ts start :: t.busy }
+        match t.status with
+        | Active start ->
+            { t with status = Paused; busy = Int64.sub ts start :: t.busy }
+        | _ -> t
       else t)
+    (Lwd_table.first table)
+
+let set_resolved { table; _ } id ts =
+  map
+    (fun t ->
+      if Int.equal t.Task.id id then { t with status = Resolved ts } else t)
     (Lwd_table.first table)
 
 let find_sort_row t v = function

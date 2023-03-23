@@ -46,31 +46,39 @@ let set_column_widths acc ws =
   new_widths
 
 let green = W.string ~attr:Notty.A.(bg green)
-let seleted_attr = Notty.A.(bg cyan)
+let selected_attr = Notty.A.(bg cyan)
+let resolved_attr = Notty.A.(fg (gray 10))
 
-let resize_uis widths (selected, uis) =
-  let bg = if selected then Some seleted_attr else None in
-  List.map2 (fun w ui -> Ui.resize ?bg ~w ~pad:gravity_pad ui) widths uis
+let resize_uis widths (bg, uis) =
+  List.map2 (fun w ui -> Ui.resize ~bg ~w ~pad:gravity_pad ui) widths uis
 
-let render_task now _ ({ Task.id; domain; start; info; busy; selected; active; _ } as t)
-    =
-  let attr = match selected with false -> None | true -> Some seleted_attr in
-  let domain = W.int ?attr domain in
-  let id = W.int ?attr id in
-  let total = Int64.sub now start in
-  let active_busy = match active with
-    | None -> 0L
-    | Some v -> Int64.sub now v
+let render_task now _
+    ({ Task.id; domain; start; info; busy; selected; status; _ } as t) =
+  let attr =
+    let open Notty.A in
+    let fg_attr =
+      match status with
+      | Resolved _ -> fg (gray 10)
+      | Active _ -> st bold
+      | _ -> empty
+    in
+    if selected then selected_attr ++ fg_attr else fg_attr
   in
+  let now = match status with Resolved v -> v | _ -> now in
+  let domain = W.int ~attr domain in
+  let id = W.int ~attr id in
+  let total = Int64.sub now start in
+  let active_busy = match status with Active v -> Int64.sub now v | _ -> 0L in
   let total_busy = List.fold_left Int64.add active_busy busy in
   let idle = max 0L (Int64.sub total total_busy) in
-  let busy = W.string ?attr @@ Fmt.(to_to_string uint64_ns_span total_busy) in
-  let idle = W.string ?attr @@ Fmt.(to_to_string uint64_ns_span idle) in
-  let loc = W.string ?attr (String.concat "\n" info) in
-  let entered = W.int ?attr (List.length t.busy) in
-  [ (Option.is_some attr, [ domain; id; busy; idle; entered; loc ]) ]
+  let busy = W.string ~attr @@ Fmt.(to_to_string uint64_ns_span total_busy) in
+  let idle = W.string ~attr @@ Fmt.(to_to_string uint64_ns_span idle) in
+  let loc = W.string ~attr (String.concat "\n" info) in
+  let entered = W.int ~attr (List.length t.busy) in
+  [ (attr, [ domain; id; busy; idle; entered; loc ]) ]
 
-let ui_monoid_list : (bool * ui list) list Lwd_utils.monoid = ([], List.append)
+let ui_monoid_list : (Notty.attr * ui list) list Lwd_utils.monoid =
+  ([], List.append)
 
 let header =
   [
