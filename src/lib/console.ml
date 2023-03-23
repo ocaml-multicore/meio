@@ -8,7 +8,7 @@ let prev_now =
   Lwd.var (ts, ts)
 
 let set_prev_now now =
-  let really_old, old = Lwd.peek prev_now in
+  let _, old = Lwd.peek prev_now in
   Lwd.set prev_now (old, now)
 
 let set_selected = function
