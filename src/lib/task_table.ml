@@ -56,10 +56,22 @@ let remove_by_id { table; _ } id =
       | None -> true)
     (Lwd_table.first table)
 
-let update_loc { table; _ } id info =
+let update_loc { table; _ } id loc =
   map
     (fun t ->
-      if Int.equal t.Task.id id then { t with info = info :: t.info } else t)
+      if Int.equal t.Task.id id then { t with loc = loc :: t.loc } else t)
+    (Lwd_table.first table)
+
+let update_logs { table; _ } id logs =
+  map
+    (fun t ->
+      if Int.equal t.Task.id id then { t with logs = logs :: t.logs } else t)
+    (Lwd_table.first table)
+
+let update_name { table; _ } id name =
+  map
+    (fun t ->
+      if Int.equal t.Task.id id then { t with name = name :: t.name } else t)
     (Lwd_table.first table)
 
 let update_active { table; _ } ~domain ~id ts =

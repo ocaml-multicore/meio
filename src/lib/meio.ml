@@ -27,9 +27,9 @@ let task_events ~latency_begin ~latency_end q =
   in
   let id_label_callback _d _ts c (i, s) =
     match Runtime_events.User.tag c with
-    | Ctf.Name -> Queue.push q (`Labelled (i, s))
-    | Ctf.Log -> Queue.push q (`Labelled (i, s))
-    | Ctf.Loc -> Queue.push q (`Labelled (i, s))
+    | Ctf.Name -> Queue.push q (`Name (i, s))
+    | Ctf.Log -> Queue.push q (`Log (i, s))
+    | Ctf.Loc -> Queue.push q (`Loc (i, s))
     | _ -> ()
   in
   add_callback Ctf.created_type id_event_callback evs
@@ -133,7 +133,9 @@ let ui handle =
         | Some (`Resolved (v, _, ts)) ->
             State.resolved (v: int) ts
           (* XXX: When to do this State.remove_task v ?  *)
-        | Some (`Labelled (i, l)) -> State.update_loc (i :> int) l
+        | Some (`Loc (i, l)) -> State.update_loc (i :> int) l
+        | Some (`Name (i, l)) -> State.update_name (i :> int) l
+        | Some (`Log (i, l)) -> State.update_logs (i :> int) l
       done)
     ~tick_period:0.05 ui;
   Atomic.set stop true;
