@@ -1,35 +1,31 @@
 name: ci
+
 on:
-  pull_request:
-      branches:
-        - "main"
   push:
-    branches:
-      - "main"
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
 jobs:
-  docker:
+  test:
+    name: Test
     runs-on: ubuntu-latest
-    container:
-      image: ocaml/opam:alpine-ocaml-5.0@sha256:7c6d01a1255243c96ab93cc3f41bb68bcacac0393147d7fe54576ff5c43ad459
-      options: --user root
     steps:
-      - name: Install external deps
-        run: sudo apk add --update cmake libffi-dev linux-headers zlib-dev
-      - name: Clone Custom Events PR
-        run: git clone https://github.com/TheLortex/ocaml && git -C ./ocaml checkout d589bf7266ac1e4f264730b87dd54f3cad6495b2
-      - name: Build compiler
-        run: cd ocaml && opam switch create --empty custom-events && opam pin add ocaml-variants.5.1.0+custom-events . -y
-        env:
-          OPAMROOT: /home/opam/.opam
-      - name: Checkout
-        uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v3
         with:
           submodules: true
+
+      - name: Use OCaml 5.0.0+custom-events
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: ocaml-variants.5.0.0+custom-events
+          opam-repositories: |
+            default: https://github.com/ocaml/opam-repository.git
+            custom-events: https://github.com/TheLortex/custom-events-opam-repository.git
+
       - name: Meio Deps 🐈‍⬛
         run: opam pin . -yn && opam install . --deps-only --with-test
-        env:
-          OPAMROOT: /home/opam/.opam
+
       - name: Build
         run: opam exec -- dune build
-        env:
-          OPAMROOT: /home/opam/.opam
