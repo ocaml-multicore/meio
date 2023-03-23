@@ -1,4 +1,4 @@
-FROM ocaml/opam:alpine-ocaml-5.0@sha256:3ddad7dfb7321d086f7be0fa3807630a8eeb098a5ff7ddfb3d28fc3c853559bf
+FROM ocaml/opam:alpine-ocaml-5.0@sha256:5cfaa996380122a4f00436040c2549115c08d01eebfd17aaa96b90186e37c344
 RUN sudo apk add --update cmake libffi-dev linux-headers zlib-dev
 WORKDIR /home/opam/src/ocaml
 RUN opam repo add custom-events https://github.com/TheLortex/custom-events-opam-repository.git
