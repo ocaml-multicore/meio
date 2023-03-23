@@ -11,7 +11,7 @@ bug-reports: "https://github.com/patricoferris/eio-console/issues"
 depends: [
   "dune" {>= "2.9"}
   "eio_main"
-  "eio"
+  "eio" {= "0.8.1+custom-events"} # available in https://github.com/TheLortex/custom-events-opam-repository
   "astring"
   "ptime"
   "nottui"
