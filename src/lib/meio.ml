@@ -48,11 +48,27 @@ let screens duration hist =
     (`Gc, fun () -> Latency.ui hist duration);
   ]
 
+let sleep f = if f >= 1e-6 then Unix.sleepf f
+
+let runtime_event_loop ~stop ~cursor ~callbacks =
+  let max_sleep = 0.01 in
+  let sleep = ref max_sleep in
+  while not (Atomic.get stop) do
+    let count = Runtime_events.read_poll cursor callbacks None in
+    if count = 0 then (
+      (* increase sleep time if there's no events *)
+      Unix.sleepf !sleep;
+      sleep := min max_sleep (!sleep *. 1.2))
+    else (
+      (* decrease sleep time in case of events *)
+      sleep := !sleep /. 1.2;
+      Unix.sleepf !sleep)
+  done
+
 let ui handle =
   let module Queue = Eio_utils.Lf_queue in
   let q = Queue.create () in
   let cursor = Runtime_events.create_cursor (Some handle) in
-  let callbacks = task_events q in
   let screen = Lwd.var `Main in
   let duration = Lwd.var 0L in
   let hist, latency_begin, latency_end = Latency.init () in
@@ -87,6 +103,13 @@ let ui handle =
           ui)
       ui (Lwd.get screen)
   in
+
+  let callbacks = task_events q ~latency_begin ~latency_end in
+  let stop = Atomic.make false in
+  let domain =
+    Domain.spawn (fun () -> runtime_event_loop ~stop ~cursor ~callbacks)
+  in
+
   Nottui.Ui_loop.run
     ~tick:(fun () ->
       Console.set_prev_now (Timestamp.current ());
@@ -94,11 +117,6 @@ let ui handle =
       Lwd.set duration
         ( Lwd.peek Console.prev_now |> fun (p, n) ->
           Int64.add now (Int64.sub n p) );
-      let _ =
-        Runtime_events.read_poll cursor
-          (callbacks ~latency_begin ~latency_end)
-          None
-      in
       while not (Queue.is_empty q) do
         match Queue.pop q with
         | None -> ()
@@ -109,4 +127,6 @@ let ui handle =
             () (* XXX: When to do this State.remove_task v ?  *)
         | Some (`Labelled (i, l)) -> State.update_loc (i :> int) l
       done)
-    ~tick_period:0.05 ui
+    ~tick_period:0.05 ui;
+  Atomic.set stop true;
+  Domain.join domain
