@@ -14,6 +14,11 @@ let task_events ~latency_begin ~latency_end q =
     | Ctf.Created, Ctf.Task -> Queue.push q (`Created ((i :> int), d, ts))
     | _ -> ()
   in
+  let unit_callback d ts c () =
+    match Runtime_events.User.tag c with
+    | Ctf.Suspend -> Queue.push q (`Suspend (d, ts))
+    | _ -> ()
+  in
   let id_callback d ts c i =
     match Runtime_events.User.tag c with
     | Ctf.Resolved -> Queue.push q (`Resolved (i, d, ts))
@@ -29,6 +34,7 @@ let task_events ~latency_begin ~latency_end q =
   in
   add_callback Ctf.created_type id_event_callback evs
   |> add_callback Runtime_events.Type.int id_callback
+  |> add_callback Runtime_events.Type.unit unit_callback
   |> add_callback Ctf.labelled_type id_label_callback
 
 let get_selected () =
@@ -123,6 +129,7 @@ let ui handle =
         | Some (`Created v) -> State.add_tasks v
         | Some (`Switch (v, domain, _)) ->
             State.switch_to ~id:(v :> int) ~domain
+        | Some (`Suspend (domain, _)) -> State.switch_to ~id:(-1) ~domain
         | Some (`Resolved (_v, _, _)) ->
             () (* XXX: When to do this State.remove_task v ?  *)
         | Some (`Labelled (i, l)) -> State.update_loc (i :> int) l
