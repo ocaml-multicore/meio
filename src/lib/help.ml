@@ -11,18 +11,22 @@ let footer =
     key_help 'm' "main page";
     Ui.space 5 0;
     key_help 'g' "GC latencies";
+    Ui.space 5 0;
+    key_help 'e' "Fiber info";
+    Ui.space 5 0;
+    key_help 'q' "Quit";
   ]
 
 let help : ui =
   Ui.hcat
     [
       W.string
-        {| 
-    |\     /| 
-    | \___/ |   meio 
+        {|
+    |\     /|
+    | \___/ |   meio
     | .   . |   A console for Eio programs.
     |___Y___|
-    
+
     This is how you use meio.
 
     1. Find a program that uses Eio.
