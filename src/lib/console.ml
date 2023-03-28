@@ -112,7 +112,7 @@ let root () =
         widths)
       task_list
   in
-  let sensor_y var ~x ~y ~w ~h () = if Lwd.peek var <> y then Lwd.set var y in
+  let sensor_y var ~x:_ ~y ~w:_ ~h:_ () = if Lwd.peek var <> y then Lwd.set var y in
   let h_top = Lwd.var 0 in
   let h_selected = Lwd.var 0 in
   let h_bottom = Lwd.var 0 in
@@ -127,7 +127,7 @@ let root () =
             in
             let line =
               match ui with
-              | _, true, v -> Ui.transient_sensor (sensor_y h_selected) line
+              | _, true, _ -> Ui.transient_sensor (sensor_y h_selected) line
               | _, _, _ -> line
             in
             Ui.join_y line acc)
