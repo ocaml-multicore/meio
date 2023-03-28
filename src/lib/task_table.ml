@@ -1,9 +1,38 @@
-type sort = Domain | Id | Busy | No_sort
+type t = {
+  table : Task.t Lwd_table.t;
+  mutable mode : Sort.t;
+  mutable compare : Task.t -> Task.t -> int;
+}
 
-(* Invariant, the lwd_table is always sorted *)
-type t = { sort : sort; table : Task.t Lwd_table.t }
+let set_sort_mode t mode =
+  t.mode <- mode;
+  t.compare <- Sort.compare mode
 
-let create () = { table = Lwd_table.make (); sort = Busy }
+let create mode =
+  { table = Lwd_table.make (); mode; compare = Sort.compare mode }
+
+(* bubble sort. we need a sort that is linear when the table is already sorted. *)
+let sort { table; compare; _ } =
+  let rec bubble previous value =
+    let p = Lwd_table.get previous |> Option.get in
+    let v = Lwd_table.get value |> Option.get in
+    if compare p v <= 0 then ()
+    else (
+      Lwd_table.set previous v;
+      Lwd_table.set value p;
+      match Lwd_table.prev previous with
+      | None -> ()
+      | Some ante -> bubble ante previous)
+  in
+  let rec loop previous = function
+    | None -> ()
+    | Some row ->
+        bubble previous row;
+        loop row (Lwd_table.next row)
+  in
+  match Lwd_table.first table with
+  | None -> ()
+  | Some first -> loop first (Lwd_table.next first)
 
 let filter f row =
   let rec loop = function
@@ -95,18 +124,11 @@ let set_resolved { table; _ } id ts =
       if Int.equal t.Task.id id then { t with status = Resolved ts } else t)
     (Lwd_table.first table)
 
-let find_sort_row t v = function
-  | Busy ->
-      Int64.compare (Task.get_current_busy t) (Task.get_current_busy v) < 0
-  | _ -> true
-
-let add ({ table; sort; _ } : t) task =
+let add ({ table; compare; mode } : t) task =
   let set_selected = Option.is_none @@ Lwd_table.first table in
-  let first =
-    find_first (fun v -> find_sort_row task v sort) (Lwd_table.first table)
-  in
   (* Hmmmm *)
-  (match first with
+  (match Lwd_table.first table with
   | None -> Lwd_table.append' table task
   | Some row -> ignore (Lwd_table.before ~set:task row));
-  if set_selected then task.selected <- true
+  if set_selected then task.selected <- true;
+  sort { table; compare; mode }

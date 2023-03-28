@@ -94,7 +94,7 @@ let header =
 
 let init_widths = List.init (List.length header) (fun _ -> width)
 
-let root () =
+let root sort =
   let task_list =
     Lwd.bind
       ~f:(fun (_, now) ->
@@ -112,7 +112,9 @@ let root () =
         widths)
       task_list
   in
-  let sensor_y var ~x:_ ~y ~w:_ ~h:_ () = if Lwd.peek var <> y then Lwd.set var y in
+  let sensor_y var ~x:_ ~y ~w:_ ~h:_ () =
+    if Lwd.peek var <> y then Lwd.set var y
+  in
   let h_top = Lwd.var 0 in
   let h_selected = Lwd.var 0 in
   let h_bottom = Lwd.var 0 in
@@ -151,7 +153,7 @@ let root () =
     and$ bottom = Lwd.get h_bottom in
     Some (top, selected, bottom)
   in
-  let footer = Lwd_utils.pack Ui.pack_x (List.map Lwd.pure Help.footer) in
+  let footer = Lwd.map ~f:Ui.hcat (Help.footer sort) in
   ( [
       W.vbox
         [
