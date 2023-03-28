@@ -43,10 +43,10 @@ let get_selected () =
     (Lwd_table.first State.tasks.table)
   |> fun v -> Option.bind v Lwd_table.get |> Option.get
 
-let screens duration hist =
+let screens duration hist sort =
   [
     (`Help, fun () -> (Lwd.return Help.help, Lwd.return None));
-    (`Main, fun () -> Console.root ());
+    (`Main, fun () -> Console.root sort);
     ( `Task,
       fun () ->
         ( Nottui_widgets.scroll_area @@ Lwd.return @@ Task.ui @@ get_selected (),
@@ -76,9 +76,10 @@ let ui handle =
   let q = Queue.create () in
   let cursor = Runtime_events.create_cursor (Some handle) in
   let screen = Lwd.var `Main in
+  let sort = Lwd.var Sort.Busy in
   let duration = Lwd.var 0L in
   let hist, latency_begin, latency_end = Latency.init () in
-  let screens = screens duration hist in
+  let screens = screens duration hist (Lwd.get sort) in
   let ui =
     Lwd.bind
       ~f:(fun screen ->
@@ -111,6 +112,11 @@ let ui handle =
             | `Key (`ASCII 'g', _), _ ->
                 Lwd.set screen `Gc;
                 `Handled
+            | `Key (`ASCII 's', _), _ ->
+                let s = Sort.next (Lwd.peek sort) in
+                Lwd.set sort s;
+                State.set_sort_mode s;
+                `Handled
             | `Key (`Escape, _), _ ->
                 if s = `Main then Lwd.set quit true else Lwd.set screen `Main;
                 `Handled
@@ -127,6 +133,7 @@ let ui handle =
   Nottui.Ui_loop.run ~quit_on_escape:false ~quit
     ~tick:(fun () ->
       Console.set_prev_now (Timestamp.current ());
+      State.sort ();
       let now = Lwd.peek duration in
       Lwd.set duration
         ( Lwd.peek Console.prev_now |> fun (p, n) ->
