@@ -86,6 +86,7 @@ let ui handle =
         Lwd.pair a b)
       (Lwd.get screen)
   in
+  let quit = Lwd.var false in
   let ui =
     Lwd.map2
       ~f:(fun (ui, selected_position) s ->
@@ -110,6 +111,11 @@ let ui handle =
             | `Key (`ASCII 'g', _), _ ->
                 Lwd.set screen `Gc;
                 `Handled
+            | `Key (`Escape, _), _ ->
+                (match Lwd.peek screen with
+                | `Main -> Lwd.set quit true
+                | _ -> Lwd.set screen `Main);
+                `Handled
             | _ -> `Unhandled)
           ui)
       ui (Lwd.get screen)
@@ -120,8 +126,7 @@ let ui handle =
   let domain =
     Domain.spawn (fun () -> runtime_event_loop ~stop ~cursor ~callbacks)
   in
-
-  Nottui.Ui_loop.run
+  Nottui.Ui_loop.run ~quit_on_escape:false ~quit
     ~tick:(fun () ->
       Console.set_prev_now (Timestamp.current ());
       let now = Lwd.peek duration in
