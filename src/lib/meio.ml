@@ -88,11 +88,11 @@ let ui handle =
         Nottui.Ui.event_filter
           (function
             | `Key (`Arrow `Down, _) when s = `Main ->
-                Console.set_selected `Prev (Lwd_table.first State.tasks.table);
-                `Handled
+              Console.set_selected `Prev (Lwd_table.first State.tasks.table);
+              `Unhandled (* for scroll *)
             | `Key (`Arrow `Up, _) when s = `Main ->
-                Console.set_selected `Next (Lwd_table.first State.tasks.table);
-                `Handled
+              Console.set_selected `Next (Lwd_table.first State.tasks.table);
+              `Unhandled (* for scroll *)
             | `Key (`ASCII 'h', _) ->
                 Lwd.set screen `Help;
                 `Handled
@@ -131,8 +131,8 @@ let ui handle =
             State.switch_to ~id:(v :> int) ~domain ts
         | Some (`Suspend (domain, ts)) -> State.switch_to ~id:(-1) ~domain ts
         | Some (`Resolved (v, _, ts)) ->
-            State.resolved (v: int) ts
-          (* XXX: When to do this State.remove_task v ?  *)
+            State.resolved (v : int) ts
+            (* XXX: When to do this State.remove_task v ?  *)
         | Some (`Loc (i, l)) -> State.update_loc (i :> int) l
         | Some (`Name (i, l)) -> State.update_name (i :> int) l
         | Some (`Log (i, l)) -> State.update_logs (i :> int) l

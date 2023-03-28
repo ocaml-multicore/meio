@@ -135,4 +135,16 @@ let root () =
     |> Lwd.map ~f:(List.fold_left Ui.join_x Ui.empty)
   in
   let footer = Lwd_utils.pack Ui.pack_x (List.map Lwd.pure Help.footer) in
-  Lwd_utils.pack Ui.pack_y [ table_header; table |> W.scroll_area; footer ]
+  [
+    W.vbox
+      [
+        table_header;
+        table
+        |> Nottui_extended.scroll_area ~direction:`Vertical
+        |> Lwd.map ~f:(Ui.resize ~h:0 ~sh:1);
+      ]
+    |> Nottui_extended.scroll_area ~direction:`Horizontal
+    |> W.scrollbox;
+    footer;
+  ]
+  |> W.vbox
