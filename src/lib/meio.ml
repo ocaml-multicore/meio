@@ -112,9 +112,7 @@ let ui handle =
                 Lwd.set screen `Gc;
                 `Handled
             | `Key (`Escape, _), _ ->
-                (match Lwd.peek screen with
-                | `Main -> Lwd.set quit true
-                | _ -> Lwd.set screen `Main);
+                if s = `Main then Lwd.set quit true else Lwd.set screen `Main;
                 `Handled
             | _ -> `Unhandled)
           ui)
