@@ -53,8 +53,7 @@ let resize_uis widths (bg, uis) =
   List.map2 (fun w ui -> Ui.resize ~bg ~w ~pad:gravity_pad ui) widths uis
 
 let render_task now _
-    ({ Task.id; domain; start; loc; name; busy; selected; status; _ } as
-    t) =
+    ({ Task.id; domain; start; loc; name; busy; selected; status; _ } as t) =
   let attr =
     let open Notty.A in
     let fg_attr =
@@ -70,13 +69,13 @@ let render_task now _
   let id = W.int ~attr id in
   let total = Int64.sub now start in
   let active_busy = match status with Active v -> Int64.sub now v | _ -> 0L in
-  let total_busy = List.fold_left Int64.add active_busy busy in
+  let total_busy = Int64.add active_busy (Task.Busy.total busy) in
   let idle = max 0L (Int64.sub total total_busy) in
   let busy = W.string ~attr @@ Fmt.(to_to_string uint64_ns_span total_busy) in
   let idle = W.string ~attr @@ Fmt.(to_to_string uint64_ns_span idle) in
   let loc = W.string ~attr (String.concat "\n" loc) in
   let name = W.string ~attr (String.concat "\n" name) in
-  let entered = W.int ~attr (List.length t.busy) in
+  let entered = W.int ~attr (Task.Busy.count t.busy) in
   [ (attr, [ domain; id; name; busy; idle; entered; loc ]) ]
 
 let ui_monoid_list : (Notty.attr * ui list) list Lwd_utils.monoid =
