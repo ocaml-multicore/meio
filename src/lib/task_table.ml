@@ -20,8 +20,9 @@ let map f row =
     | None -> ()
     | Some row ->
         let next = Lwd_table.next row in
-        let t = f (Option.get (Lwd_table.get row)) in
-        Lwd_table.set row t;
+        let t = Option.get (Lwd_table.get row) in
+        let t' = f t in
+        if t != t' then Lwd_table.set row t';
         loop next
   in
   loop row
@@ -82,7 +83,8 @@ let update_active { table; _ } ~domain ~id ts =
       else if Int.equal t.Task.domain domain then
         match t.status with
         | Active start ->
-            { t with status = Paused; busy = Int64.sub ts start :: t.busy }
+            Task.Busy.add t.busy (Int64.sub ts start);
+            { t with status = Paused }
         | _ -> t
       else t)
     (Lwd_table.first table)

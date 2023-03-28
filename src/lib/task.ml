@@ -4,11 +4,41 @@ module H = Hdr_histogram
 
 type status = Paused | Active of int64 | Resolved of int64
 
+module Busy : sig
+  type t
+
+  val make : unit -> t
+  val total : t -> int64
+  val count : t -> int
+  val hist : t -> H.t
+  val add : t -> int64 -> unit
+end = struct
+  type t = { mutable total : int64; mutable count : int; hist : H.t }
+
+  let make () =
+    {
+      total = 0L;
+      count = 0;
+      hist =
+        H.init ~lowest_discernible_value:10
+          ~highest_trackable_value:10_000_000_000 ~significant_figures:3;
+    }
+
+  let total t = t.total
+  let count t = t.count
+  let hist t = t.hist
+
+  let add t value =
+    assert (H.record_value t.hist (Int64.to_int value));
+    t.total <- Int64.add t.total value;
+    t.count <- t.count + 1
+end
+
 type t = {
   id : int;
   domain : int;
   start : int64;
-  busy : int64 list;
+  busy : Busy.t;
   name : string list;
   loc : string list;
   logs : string list;
@@ -16,7 +46,7 @@ type t = {
   status : status;
 }
 
-let get_current_busy t = match t.busy with [] -> 0L | x :: _ -> x
+let get_current_busy t = Busy.total t.busy
 let equal a b = a.id = b.id && a.domain = b.domain
 
 let create ~id ~domain start =
@@ -24,7 +54,7 @@ let create ~id ~domain start =
     id;
     domain;
     start;
-    busy = [];
+    busy = Busy.make ();
     logs = [];
     name = [];
     loc = [];
@@ -38,14 +68,7 @@ let percentiles =
 let max_list =
   List.fold_left (fun max v -> if Int64.compare v max > 0 then v else max) 0L
 
-let make_histogram task =
-  let h =
-    H.init ~lowest_discernible_value:10 ~highest_trackable_value:10_000_000_000
-      ~significant_figures:3
-  in
-  List.iter (fun v -> assert (H.record_value h (Int64.to_int v))) task.busy;
-  h
-
+let make_histogram task = Busy.hist task.busy
 let ns_span i = Fmt.(to_to_string uint64_ns_span (Int64.of_int i))
 
 let ui task =
