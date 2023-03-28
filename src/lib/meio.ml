@@ -45,13 +45,13 @@ let get_selected () =
 
 let screens duration hist =
   [
-    (`Help, fun () -> Lwd.return Help.help);
+    (`Help, fun () -> (Lwd.return Help.help, Lwd.return None));
     (`Main, fun () -> Console.root ());
     ( `Task,
       fun () ->
-        Nottui_widgets.scroll_area @@ Lwd.return @@ Task.ui @@ get_selected ()
-    );
-    (`Gc, fun () -> Latency.ui hist duration);
+        ( Nottui_widgets.scroll_area @@ Lwd.return @@ Task.ui @@ get_selected (),
+          Lwd.return None ) );
+    (`Gc, fun () -> (Latency.ui hist duration, Lwd.return None));
   ]
 
 let sleep f = if f >= 1e-6 then Unix.sleepf f
@@ -80,29 +80,34 @@ let ui handle =
   let hist, latency_begin, latency_end = Latency.init () in
   let screens = screens duration hist in
   let ui =
-    Lwd.bind ~f:(fun screen -> (List.assoc screen screens) ()) (Lwd.get screen)
+    Lwd.bind
+      ~f:(fun screen ->
+        let a, b = (List.assoc screen screens) () in
+        Lwd.pair a b)
+      (Lwd.get screen)
   in
   let ui =
     Lwd.map2
-      ~f:(fun ui s ->
+      ~f:(fun (ui, selected_position) s ->
         Nottui.Ui.event_filter
-          (function
-            | `Key (`Arrow `Down, _) when s = `Main ->
-              Console.set_selected `Prev (Lwd_table.first State.tasks.table);
-              `Unhandled (* for scroll *)
-            | `Key (`Arrow `Up, _) when s = `Main ->
-              Console.set_selected `Next (Lwd_table.first State.tasks.table);
-              `Unhandled (* for scroll *)
-            | `Key (`ASCII 'h', _) ->
+          (fun ev ->
+            match (ev, selected_position) with
+            | `Key (`Arrow `Down, _), Some (_, pos, bot) ->
+                Console.set_selected `Prev (Lwd_table.first State.tasks.table);
+                if pos = bot - 1 then `Unhandled else `Handled
+            | `Key (`Arrow `Up, _), Some (top, pos, _) ->
+                Console.set_selected `Next (Lwd_table.first State.tasks.table);
+                if pos = top + 1 then `Unhandled else `Handled
+            | `Key (`ASCII 'h', _), _ ->
                 Lwd.set screen `Help;
                 `Handled
-            | `Key (`ASCII 'e', _) ->
+            | `Key (`ASCII 'e', _), _ ->
                 Lwd.set screen `Task;
                 `Handled
-            | `Key (`ASCII 'm', _) ->
+            | `Key (`ASCII 'm', _), _ ->
                 Lwd.set screen `Main;
                 `Handled
-            | `Key (`ASCII 'g', _) ->
+            | `Key (`ASCII 'g', _), _ ->
                 Lwd.set screen `Gc;
                 `Handled
             | _ -> `Unhandled)
