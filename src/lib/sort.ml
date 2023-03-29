@@ -1,11 +1,11 @@
 type t = Domain | Id | Busy | Tree | No_sort
 
-type compare =
+type sort =
   | V : {
       prepare : ((Task.t -> unit) -> unit) -> 'a;
       compare : 'a -> Task.t -> Task.t -> int;
     }
-      -> compare
+      -> sort
 
 let next = function
   | Busy -> Tree
