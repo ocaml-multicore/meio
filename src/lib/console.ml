@@ -11,10 +11,10 @@ let set_prev_now now =
   let _, old = Lwd.peek prev_now in
   Lwd.set prev_now (old, now)
 
-let set_selected = function
+let set_selected t = function
   | `Next ->
       let set = ref false in
-      Task_table.iter_with_prev (fun ~prev c ->
+      Task_table.iter_with_prev t (fun ~prev c ->
           if !set then ()
           else
             match prev with
@@ -25,7 +25,7 @@ let set_selected = function
                   c.Task.selected <- true;
                   set := true))
   | `Prev ->
-      Task_table.iter_with_prev (fun ~prev c ->
+      Task_table.iter_with_prev t (fun ~prev c ->
           match prev with
           | None -> ()
           | Some p ->

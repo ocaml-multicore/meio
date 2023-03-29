@@ -99,10 +99,10 @@ let ui_loop ~q ~hist =
           (fun ev ->
             match (ev, selected_position) with
             | `Key (`Arrow `Down, _), Some (_, pos, bot) ->
-                Console.set_selected `Prev (Lwd_table.first State.tasks.table);
+                Console.set_selected State.tasks `Prev;
                 if pos = bot - 1 then `Unhandled else `Handled
             | `Key (`Arrow `Up, _), Some (top, pos, _) ->
-                Console.set_selected `Next (Lwd_table.first State.tasks.table);
+                Console.set_selected State.tasks `Next;
                 if pos = top + 1 then `Unhandled else `Handled
             | `Key (`ASCII 'h', _), _ ->
                 Lwd.set screen `Help;
@@ -134,7 +134,6 @@ let ui_loop ~q ~hist =
   Nottui.Ui_loop.run ~quit_on_escape:false ~quit
     ~tick:(fun () ->
       Console.set_prev_now (Timestamp.current ());
-      State.sort ();
       let now = Lwd.peek duration in
       Lwd.set duration
         ( Lwd.peek Console.prev_now |> fun (p, n) ->
@@ -152,7 +151,8 @@ let ui_loop ~q ~hist =
         | Some (`Loc (i, l)) -> State.update_loc (i :> int) l
         | Some (`Name (i, l)) -> State.update_name (i :> int) l
         | Some (`Log (i, l)) -> State.update_logs (i :> int) l
-      done)
+      done;
+      State.sort ())
     ~tick_period:0.05 ui
 
 let ui handle =
