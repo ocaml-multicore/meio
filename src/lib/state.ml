@@ -1,5 +1,5 @@
 (* Mutable State *)
-let tasks = Task_table.create Sort.Busy
+let tasks = Task_table.create Sort.Tree
 let set_sort_mode = Task_table.set_sort_mode tasks
 
 let add_tasks (id, parent_id, domain, ts) =
