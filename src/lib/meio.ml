@@ -31,11 +31,11 @@ let task_events ~latency_begin ~latency_end q =
         Queue.push q (`Switch ((i :> int), d, ts))
     | _ -> ()
   in
-  let id_label_callback _d _ts c (i, s) =
+  let id_label_callback _d _ts c ((i : Ctf.id), s) =
     match Runtime_events.User.tag c with
-    | Ctf.Name -> Queue.push q (`Name (i, s))
-    | Ctf.Log -> Queue.push q (`Log (i, s))
-    | Ctf.Loc -> Queue.push q (`Loc (i, s))
+    | Ctf.Name -> Queue.push q (`Name ((i :> int), s))
+    | Ctf.Log -> Queue.push q (`Log ((i :> int), s))
+    | Ctf.Loc -> Queue.push q (`Loc ((i :> int), s))
     | _ -> ()
   in
   add_callback Ctf.created_type id_event_callback evs
@@ -77,14 +77,12 @@ let runtime_event_loop ~stop ~cursor ~callbacks =
       Unix.sleepf !sleep)
   done
 
-let ui handle =
-  let module Queue = Eio_utils.Lf_queue in
-  let q = Queue.create () in
-  let cursor = Runtime_events.create_cursor (Some handle) in
+module Queue = Eio_utils.Lf_queue
+
+let ui_loop ~q ~hist =
   let screen = Lwd.var `Main in
   let sort = Lwd.var Sort.Tree in
   let duration = Lwd.var 0L in
-  let hist, latency_begin, latency_end = Latency.init () in
   let screens = screens duration hist (Lwd.get sort) in
   let ui =
     Lwd.bind
@@ -133,12 +131,6 @@ let ui handle =
           ui)
       ui (Lwd.get screen)
   in
-
-  let callbacks = task_events q ~latency_begin ~latency_end in
-  let stop = Atomic.make false in
-  let domain =
-    Domain.spawn (fun () -> runtime_event_loop ~stop ~cursor ~callbacks)
-  in
   Nottui.Ui_loop.run ~quit_on_escape:false ~quit
     ~tick:(fun () ->
       Console.set_prev_now (Timestamp.current ());
@@ -161,6 +153,18 @@ let ui handle =
         | Some (`Name (i, l)) -> State.update_name (i :> int) l
         | Some (`Log (i, l)) -> State.update_logs (i :> int) l
       done)
-    ~tick_period:0.05 ui;
+    ~tick_period:0.05 ui
+
+let ui handle =
+  let q = Queue.create () in
+  let cursor = Runtime_events.create_cursor (Some handle) in
+  let hist, latency_begin, latency_end = Latency.init () in
+
+  let callbacks = task_events q ~latency_begin ~latency_end in
+  let stop = Atomic.make false in
+  let domain =
+    Domain.spawn (fun () -> runtime_event_loop ~stop ~cursor ~callbacks)
+  in
+  ui_loop ~q ~hist;
   Atomic.set stop true;
   Domain.join domain
