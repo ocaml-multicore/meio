@@ -52,8 +52,25 @@ let resolved_attr = Notty.A.(fg (gray 10))
 let resize_uis widths (bg, _, uis) =
   List.map2 (fun w ui -> Ui.resize ~bg ~w ~pad:gravity_pad ui) widths uis
 
-let render_task now _
-    ({ Task.id; domain; start; loc; name; busy; selected; status; _ } as t) =
+let render_tree_line depth attr =
+  let line =
+    let depth = List.tl (List.rev depth) in
+    let l = List.length depth in
+    List.mapi
+      (fun i v ->
+        match (i = l - 1, v) with
+        | true, false -> " ├─"
+        | true, true -> " └─"
+        | false, false -> " │ "
+        | false, true -> "   ")
+      depth
+    |> String.concat ""
+  in
+  W.string ~attr (line ^ " ")
+
+let render_task sort now _
+    ({ Task.id; domain; start; loc; name; busy; selected; status; depth; _ } as
+    t) =
   let attr =
     let open Notty.A in
     let fg_attr =
@@ -76,6 +93,10 @@ let render_task now _
   let loc = W.string ~attr (String.concat "\n" loc) in
   let name = W.string ~attr (String.concat "\n" name) in
   let entered = W.int ~attr (Task.Busy.count t.busy) in
+  let name =
+    if sort = Sort.Tree then Ui.hcat [ render_tree_line depth attr; name ]
+    else name
+  in
   [ (attr, selected, [ domain; id; name; busy; idle; entered; loc ]) ]
 
 let ui_monoid_list : (Notty.attr * bool * ui list) list Lwd_utils.monoid =
@@ -97,9 +118,10 @@ let init_widths = List.init (List.length header) (fun _ -> width)
 let root sort =
   let task_list =
     Lwd.bind
-      ~f:(fun (_, now) ->
-        Lwd_table.map_reduce (render_task now) ui_monoid_list State.tasks.table)
-      (Lwd.get prev_now)
+      ~f:(fun ((_, now), sort) ->
+        Lwd_table.map_reduce (render_task sort now) ui_monoid_list
+          State.tasks.table)
+      (Lwd.pair (Lwd.get prev_now) sort)
   in
   let widths =
     Lwd.map

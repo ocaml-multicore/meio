@@ -1,7 +1,7 @@
 type t = {
   table : Task.t Lwd_table.t;
   mutable mode : Sort.t;
-  mutable compare : Task.t -> Task.t -> int;
+  mutable compare : Sort.compare;
 }
 
 let set_sort_mode t mode =
@@ -13,10 +13,12 @@ let create mode =
 
 (* bubble sort. we need a sort that is linear when the table is already sorted. *)
 let sort { table; compare; _ } =
+  let (V { prepare; compare }) = compare in
+  let prep = prepare (fun fn -> Lwd_table.iter fn table) in
   let rec bubble previous value =
     let p = Lwd_table.get previous |> Option.get in
     let v = Lwd_table.get value |> Option.get in
-    if compare p v <= 0 then ()
+    if compare prep p v <= 0 then ()
     else (
       Lwd_table.set previous v;
       Lwd_table.set value p;
