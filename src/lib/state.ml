@@ -1,8 +1,9 @@
 (* Mutable State *)
 let tasks = Task_table.create Sort.Busy
 let set_sort_mode = Task_table.set_sort_mode tasks
-let add_tasks (id, domain, ts) =
-  let task = Task.create ~id ~domain (Runtime_events.Timestamp.to_int64 ts) in
+
+let add_tasks (id, parent_id, domain, ts) =
+  let task = Task.create ~id ~domain ~parent_id (Runtime_events.Timestamp.to_int64 ts) in
   Task_table.add tasks task
 
 let remove_task i = Task_table.remove_by_id tasks i

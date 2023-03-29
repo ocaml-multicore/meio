@@ -36,6 +36,7 @@ end
 
 type t = {
   id : int;
+  parent_id : int;
   domain : int;
   start : int64;
   busy : Busy.t;
@@ -44,15 +45,17 @@ type t = {
   logs : string list;
   mutable selected : bool;
   status : status;
+  mutable depth : bool list; (* for the tree view *)
 }
 
 let get_current_busy t = Busy.total t.busy
 let equal a b = a.id = b.id && a.domain = b.domain
 
-let create ~id ~domain start =
+let create ~id ~domain ~parent_id start =
   {
     id;
     domain;
+    parent_id;
     start;
     busy = Busy.make ();
     logs = [];
@@ -60,6 +63,7 @@ let create ~id ~domain start =
     loc = [];
     selected = false;
     status = Paused;
+    depth = [];
   }
 
 let percentiles =

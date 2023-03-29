@@ -4,6 +4,7 @@ let add_callback = Runtime_events.Callbacks.add_user_event
 let timestamp s = Runtime_events.Timestamp.to_int64 s |> Int64.to_string
 
 let task_events ~latency_begin ~latency_end q =
+  let current_id = ref (-1) in
   let module Queue = Eio_utils.Lf_queue in
   let evs =
     Runtime_events.Callbacks.create ~runtime_begin:latency_begin
@@ -11,18 +12,23 @@ let task_events ~latency_begin ~latency_end q =
   in
   let id_event_callback d ts c ((i : Ctf.id), v) =
     match (Runtime_events.User.tag c, v) with
-    | Ctf.Created, Ctf.Task -> Queue.push q (`Created ((i :> int), d, ts))
+    | Ctf.Created, Ctf.Task ->
+        Queue.push q (`Created ((i :> int), !current_id, d, ts))
     | _ -> ()
   in
   let unit_callback d ts c () =
     match Runtime_events.User.tag c with
-    | Ctf.Suspend -> Queue.push q (`Suspend (d, ts))
+    | Ctf.Suspend ->
+        current_id := -1;
+        Queue.push q (`Suspend (d, ts))
     | _ -> ()
   in
   let id_callback d ts c i =
     match Runtime_events.User.tag c with
     | Ctf.Resolved -> Queue.push q (`Resolved (i, d, ts))
-    | Ctf.Switch -> Queue.push q (`Switch ((i :> int), d, ts))
+    | Ctf.Switch ->
+        current_id := i;
+        Queue.push q (`Switch ((i :> int), d, ts))
     | _ -> ()
   in
   let id_label_callback _d _ts c (i, s) =
