@@ -32,19 +32,21 @@ let topo_sort map =
     | None -> (acc, order)
     | Some children ->
         let len = List.length children in
-        List.fold_left
-          (fun ((acc, order), n) (id, payload) ->
-            let depth = (n = len - 1) :: depth in
-            payload.Task.depth <- depth;
-            ( topo_sort_dfs ~order:(order + 1) ~root:id ~depth
-                ((payload.Task.id, order) :: acc),
-              n + 1 ))
-          ((acc, order), 0)
-          children
+
+        children
+        |> List.sort (fun (_, t1) (_, t2) ->
+               -Int.compare (state_to_int t1) (state_to_int t2))
+        |> List.fold_left
+             (fun ((acc, order), n) (id, payload) ->
+               let depth = (n = len - 1) :: depth in
+               payload.Task.depth <- depth;
+               ( topo_sort_dfs ~order:(order + 1) ~root:id ~depth
+                   (Map.add payload.Task.id order acc),
+                 n + 1 ))
+             ((acc, order), 0)
         |> fst
   in
-  topo_sort_dfs ~order:0 ~root:(-1) ~depth:[] []
-  |> fst |> List.to_seq |> Map.of_seq
+  topo_sort_dfs ~order:0 ~root:(-1) ~depth:[] Map.empty |> fst
 
 let merge_fn _ b c =
   match (b, c) with
