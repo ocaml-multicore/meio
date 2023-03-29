@@ -1,7 +1,9 @@
 type t = {
   table : Task.t Lwd_table.t;
+  by_id : (int, Task.t Lwd_table.row) Hashtbl.t;
   mutable mode : Sort.t;
   mutable compare : Sort.compare;
+  mutable active_id : int;
 }
 
 let set_sort_mode t mode =
@@ -9,128 +11,143 @@ let set_sort_mode t mode =
   t.compare <- Sort.compare mode
 
 let create mode =
-  { table = Lwd_table.make (); mode; compare = Sort.compare mode }
+  {
+    table = Lwd_table.make ();
+    mode;
+    compare = Sort.compare mode;
+    by_id = Hashtbl.create 10;
+    active_id = -1;
+  }
+
+let get_row v = Lwd_table.get v |> Option.get
 
 (* bubble sort. we need a sort that is linear when the table is already sorted. *)
-let sort { table; compare; _ } =
+let sort { table; compare; by_id; _ } =
   let (V { prepare; compare }) = compare in
   let prep = prepare (fun fn -> Lwd_table.iter fn table) in
   let rec bubble previous value =
-    let p = Lwd_table.get previous |> Option.get in
-    let v = Lwd_table.get value |> Option.get in
+    let p = get_row previous in
+    let v = get_row value in
     if compare prep p v <= 0 then ()
     else (
       Lwd_table.set previous v;
+      Hashtbl.replace by_id v.id previous;
       Lwd_table.set value p;
+      Hashtbl.replace by_id p.id value;
       match Lwd_table.prev previous with
       | None -> ()
       | Some ante -> bubble ante previous)
   in
-  let rec loop previous = function
+  let rec bubble_loop previous = function
     | None -> ()
     | Some row ->
         bubble previous row;
-        loop row (Lwd_table.next row)
+        bubble_loop row (Lwd_table.next row)
   in
   match Lwd_table.first table with
   | None -> ()
-  | Some first -> loop first (Lwd_table.next first)
+  | Some first -> bubble_loop first (Lwd_table.next first)
 
-let filter f row =
-  let rec loop = function
+let filter t f =
+  let rec filter_loop = function
     | None -> ()
     | Some row ->
         let next = Lwd_table.next row in
-        if f row then () else Lwd_table.remove row;
-        loop next
+        (if f row then ()
+         else
+           let v = get_row row in
+           Lwd_table.remove row;
+           Hashtbl.remove t.by_id v.Task.id);
+        filter_loop next
   in
-  loop row
+  filter_loop (Lwd_table.first t.table)
 
-let map f row =
-  let rec loop = function
+let map t f =
+  let rec map_loop = function
     | None -> ()
     | Some row ->
         let next = Lwd_table.next row in
-        let t = Option.get (Lwd_table.get row) in
+        let t = get_row row in
         let t' = f t in
         if t != t' then Lwd_table.set row t';
-        loop next
+        map_loop next
   in
-  loop row
+  map_loop (Lwd_table.first t.table)
 
-let iter_with_prev f row =
-  let rec loop acc = function
+let iter_with_prev t f =
+  let rec iter_wp_loop acc = function
     | None -> ()
     | Some row ->
         let next = Lwd_table.next row in
-        let current = Option.get (Lwd_table.get row) in
+        let current = get_row row in
         f ~prev:acc current;
         (* Lwd_table.set row t; *)
-        loop (Some current) next
+        iter_wp_loop (Some current) next
   in
-  loop None row
+  iter_wp_loop None (Lwd_table.first t.table)
 
 let find_first f row =
-  let rec loop = function
+  let rec ff_loop = function
     | None -> None
     | Some row -> (
         match Lwd_table.get row with
-        | None -> loop (Lwd_table.next row)
-        | Some v -> if f v then Some row else loop (Lwd_table.next row))
+        | None -> ff_loop (Lwd_table.next row)
+        | Some v -> if f v then Some row else ff_loop (Lwd_table.next row))
   in
-  loop row
+  ff_loop row
 
-let remove_by_id { table; _ } id =
-  filter
-    (fun t ->
+let remove_by_id t id =
+  filter t (fun t ->
       match Lwd_table.get t with
       | Some t -> Int.equal t.Task.id id
       | None -> true)
-    (Lwd_table.first table)
 
-let update_loc { table; _ } id loc =
-  map
-    (fun t ->
+let update_loc t id loc =
+  map t (fun t ->
       if Int.equal t.Task.id id then { t with loc = loc :: t.loc } else t)
-    (Lwd_table.first table)
 
-let update_logs { table; _ } id logs =
-  map
-    (fun t ->
-      if Int.equal t.Task.id id then { t with logs = logs :: t.logs } else t)
-    (Lwd_table.first table)
+let update_logs { by_id; _ } id logs =
+  let row = Hashtbl.find by_id id in
+  let t = get_row row in
+  Lwd_table.set row { t with logs = logs :: t.logs }
 
-let update_name { table; _ } id name =
-  map
-    (fun t ->
-      if Int.equal t.Task.id id then { t with name = name :: t.name } else t)
-    (Lwd_table.first table)
+let update_name { by_id; _ } id name =
+  let row = Hashtbl.find by_id id in
+  let t = get_row row in
+  Lwd_table.set row { t with name = name :: t.name }
 
-let update_active { table; _ } ~domain ~id ts =
-  map
-    (fun t ->
-      if Int.equal t.Task.id id && Int.equal t.Task.domain domain then
-        { t with status = Active ts }
-      else if Int.equal t.Task.domain domain then
+let update_active ({ by_id; active_id; _ } as t) ~domain:_ ~id ts =
+  (match Hashtbl.find_opt by_id active_id with
+  | None -> ()
+  | Some active_row ->
+      let t = get_row active_row in
+      let row =
         match t.status with
         | Active start ->
             Task.Busy.add t.busy (Int64.sub ts start);
             { t with status = Paused }
         | _ -> t
-      else t)
-    (Lwd_table.first table)
+      in
+      Lwd_table.set active_row row);
+  (match Hashtbl.find_opt by_id id with
+  | None -> ()
+  | Some row ->
+      let t = get_row row in
+      Lwd_table.set row { t with status = Active ts });
+  t.active_id <- id
 
-let set_resolved { table; _ } id ts =
-  map
-    (fun t ->
+let set_resolved t id ts =
+  map t (fun t ->
       if Int.equal t.Task.id id then { t with status = Resolved ts } else t)
-    (Lwd_table.first table)
 
-let add ({ table; compare; mode } : t) task =
-  let set_selected = Option.is_none @@ Lwd_table.first table in
+let add (t : t) task =
+  let set_selected = Option.is_none @@ Lwd_table.first t.table in
   (* Hmmmm *)
-  (match Lwd_table.first table with
-  | None -> Lwd_table.append' table task
-  | Some row -> ignore (Lwd_table.before ~set:task row));
+  let row =
+    match Lwd_table.first t.table with
+    | None -> Lwd_table.append ~set:task t.table
+    | Some row -> Lwd_table.before ~set:task row
+  in
+  Hashtbl.add t.by_id task.id row;
   if set_selected then task.selected <- true;
-  sort { table; compare; mode }
+  sort t
