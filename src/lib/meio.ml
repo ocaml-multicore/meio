@@ -118,6 +118,9 @@ let ui handle =
             | `Key (`ASCII 'g', _), _ ->
                 Lwd.set screen `Gc;
                 `Handled
+            | `Key (`ASCII 'q', _), _ ->
+                Lwd.set quit true;
+                `Handled
             | `Key (`ASCII 's', _), _ ->
                 let s = Sort.next (Lwd.peek sort) in
                 Lwd.set sort s;
