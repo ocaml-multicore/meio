@@ -2,7 +2,7 @@ type t = {
   table : Task.t Lwd_table.t;
   by_id : (int, Task.t Lwd_table.row) Hashtbl.t;
   mutable mode : Sort.t;
-  mutable compare : Sort.compare;
+  mutable compare : Sort.sort;
   mutable active_id : int;
 }
 
