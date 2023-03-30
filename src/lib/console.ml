@@ -52,34 +52,33 @@ let resolved_attr = Notty.A.(fg (gray 10))
 let resize_uis widths (bg, _, uis) =
   List.map2 (fun w ui -> Ui.resize ~bg ~w ~pad:gravity_pad ui) widths uis
 
-let render_tree_line depth attr =
-  let line =
-    let depth = List.tl (List.rev depth) in
-    let l = List.length depth in
-    List.mapi
-      (fun i v ->
-        match (i = l - 1, v) with
-        | true, false -> " ├─"
-        | true, true -> " └─"
-        | false, false -> " │ "
-        | false, true -> "   ")
-      depth
-    |> String.concat ""
-  in
-  W.string ~attr (line ^ " ")
+let attr' selected active =
+  let open Notty.A in
+  let fg_attr = match active with true -> empty | false -> fg (gray 10) in
+  if selected then selected_attr ++ fg_attr else fg_attr
+
+let render_tree_line depth is_active attr =
+  let depth = match List.rev depth with [] -> [] | _ :: tl -> tl in
+  let l = List.length depth in
+  List.mapi
+    (fun i v ->
+      match (i = l - 1, v) with
+      | true, Some _ -> (" ├─ ", is_active)
+      | true, None -> (" └─ ", is_active)
+      | false, Some v -> (" │ ", v)
+      | false, None -> ("   ", false))
+    depth
+  |> List.map (fun (s, is_active) -> W.string ~attr:(attr is_active) s)
+  |> Ui.hcat
 
 let render_task sort now _
     ({ Task.id; domain; start; loc; name; busy; selected; status; depth; _ } as
     t) =
+  let is_active = match status with Resolved _ -> false | _ -> true in
+  let attr = attr' selected is_active in
   let attr =
     let open Notty.A in
-    let fg_attr =
-      match status with
-      | Resolved _ -> fg (gray 10)
-      | Active _ -> st bold
-      | _ -> empty
-    in
-    if selected then selected_attr ++ fg_attr else fg_attr
+    match status with Active _ -> attr ++ st bold | _ -> attr
   in
   let now = match status with Resolved v -> v | _ -> now in
   let domain = W.int ~attr domain in
@@ -94,7 +93,8 @@ let render_task sort now _
   let name = W.string ~attr (String.concat "\n" name) in
   let entered = W.int ~attr (Task.Busy.count t.busy) in
   let name =
-    if sort = Sort.Tree then Ui.hcat [ render_tree_line depth attr; name ]
+    if sort = Sort.Tree then
+      Ui.hcat [ render_tree_line depth is_active (attr' selected); name ]
     else name
   in
   [ (attr, selected, [ domain; id; name; busy; idle; entered; loc ]) ]

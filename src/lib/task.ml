@@ -45,7 +45,7 @@ type t = {
   logs : string list;
   mutable selected : bool;
   status : status;
-  mutable depth : bool list; (* for the tree view *)
+  mutable depth : bool option list; (* for the tree view *)
 }
 
 let get_current_busy t = Busy.total t.busy
