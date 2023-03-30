@@ -141,6 +141,11 @@ let set_resolved t id ts =
   map t (fun t ->
       if Int.equal t.Task.id id then { t with status = Resolved ts } else t)
 
+let set_parent { by_id; _ } ~child ~parent =
+  let row = Hashtbl.find by_id child in
+  let t = get_row row in
+  Lwd_table.set row { t with parent_id = parent }
+
 let add (t : t) task =
   let set_selected = Option.is_none @@ Lwd_table.first t.table in
   (* Hmmmm *)

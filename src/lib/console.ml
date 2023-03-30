@@ -33,7 +33,7 @@ let set_selected t = function
                 c.selected <- false;
                 p.selected <- true))
 
-let width = 12
+let width = 6
 let padding = 3
 
 let set_column_widths acc ws =
@@ -71,9 +71,29 @@ let render_tree_line depth is_active attr =
   |> List.map (fun (s, is_active) -> W.string ~attr:(attr is_active) s)
   |> Ui.hcat
 
+let cancellation_context_purpose_to_string = function
+  | Eio.Private.Ctf.Choose -> "choose"
+  | Pick -> "pick"
+  | Join -> "join"
+  | Switch -> "switch"
+  | Protect -> "protect"
+  | Sub -> "sub"
+  | Root -> "root"
+
 let render_task sort now _
-    ({ Task.id; domain; start; loc; name; busy; selected; status; depth; _ } as
-    t) =
+    ({
+       Task.id;
+       domain;
+       start;
+       loc;
+       name;
+       busy;
+       selected;
+       status;
+       depth;
+       kind;
+       _;
+     } as t) =
   let is_active = match status with Resolved _ -> false | _ -> true in
   let attr = attr' selected is_active in
   let attr =
@@ -97,7 +117,16 @@ let render_task sort now _
       Ui.hcat [ render_tree_line depth is_active (attr' selected); name ]
     else name
   in
-  [ (attr, selected, [ domain; id; name; busy; idle; entered; loc ]) ]
+  let kind =
+    W.string ~attr
+      (match kind with
+      | Cancellation_context { protected; purpose } ->
+          Fmt.str "cc {%b, %s}" protected
+            (cancellation_context_purpose_to_string purpose)
+      | Task -> "task"
+      | _ -> "??")
+  in
+  [ (attr, selected, [ domain; id; kind; name; busy; idle; entered; loc ]) ]
 
 let ui_monoid_list : (Notty.attr * bool * ui list) list Lwd_utils.monoid =
   ([], List.append)
@@ -106,6 +135,7 @@ let header =
   [
     green "DOMAIN";
     green "ID";
+    green "KIND";
     green "NAME";
     green "BUSY";
     green "IDLE";

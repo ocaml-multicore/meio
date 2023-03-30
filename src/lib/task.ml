@@ -46,12 +46,13 @@ type t = {
   mutable selected : bool;
   status : status;
   mutable depth : bool option list; (* for the tree view *)
+  kind : Eio.Private.Ctf.event;
 }
 
 let get_current_busy t = Busy.total t.busy
 let equal a b = a.id = b.id && a.domain = b.domain
 
-let create ~id ~domain ~parent_id start =
+let create ~id ~domain ~parent_id start kind =
   {
     id;
     domain;
@@ -64,6 +65,7 @@ let create ~id ~domain ~parent_id start =
     selected = false;
     status = Paused;
     depth = [];
+    kind;
   }
 
 let percentiles =
