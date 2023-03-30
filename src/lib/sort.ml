@@ -31,14 +31,27 @@ let topo_sort map =
     match Map.find_opt root map with
     | None -> (acc, order)
     | Some children ->
-        let len = List.length children in
-
-        children
-        |> List.sort (fun (_, t1) (_, t2) ->
-               -Int.compare (state_to_int t1) (state_to_int t2))
-        |> List.fold_left
-             (fun ((acc, order), n) (id, payload) ->
-               let depth = (n = len - 1) :: depth in
+        let c =
+          children
+          |> List.sort (fun (_, t1) (_, t2) ->
+                 -Int.compare (state_to_int t1) (state_to_int t2))
+          |> List.to_seq
+        in
+        let next =
+          Seq.append
+            (Seq.map snd c |> Seq.drop 1 |> Seq.map Option.some)
+            (Seq.return None)
+        in
+        Seq.zip c next
+        |> Seq.fold_left
+             (fun ((acc, order), n) ((id, payload), next) ->
+               let depth =
+                 (match next with
+                 | None -> None
+                 | Some { Task.status = Resolved _; _ } -> Some false
+                 | _ -> Some true)
+                 :: depth
+               in
                payload.Task.depth <- depth;
                ( topo_sort_dfs ~order:(order + 1) ~root:id ~depth
                    (Map.add payload.Task.id order acc),
