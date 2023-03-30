@@ -1,5 +1,6 @@
 type t = {
   table : Task.t Lwd_table.t;
+  (* by_id has to be kept in sync with the table *)
   by_id : (int, Task.t Lwd_table.row) Hashtbl.t;
   mutable mode : Sort.t;
   mutable compare : Sort.sort;
