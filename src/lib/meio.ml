@@ -12,8 +12,13 @@ let task_events ~latency_begin ~latency_end q =
   in
   let id_event_callback d ts c ((i : Ctf.id), v) =
     match (Runtime_events.User.tag c, v) with
-    | Ctf.Created, Ctf.Task ->
-        Queue.push q (`Created ((i :> int), !current_id, d, ts))
+    | Ctf.Created, (Ctf.Task | Ctf.Cancellation_context _) ->
+        Queue.push q (`Created ((i :> int), !current_id, d, ts, v))
+    | _ -> ()
+  in
+  let two_ids_callback _d _ts c ((child : Ctf.id), (parent : Ctf.id)) =
+    match Runtime_events.User.tag c with
+    | Ctf.Parent -> Queue.push q (`Parent ((child :> int), (parent :> int)))
     | _ -> ()
   in
   let unit_callback d ts c () =
@@ -42,6 +47,7 @@ let task_events ~latency_begin ~latency_end q =
   |> add_callback Runtime_events.Type.int id_callback
   |> add_callback Runtime_events.Type.unit unit_callback
   |> add_callback Ctf.labelled_type id_label_callback
+  |> add_callback Ctf.two_ids_type two_ids_callback
 
 let get_selected () =
   Task_table.find_first
@@ -145,6 +151,7 @@ let ui_loop ~q ~hist =
         | Some (`Switch (v, domain, ts)) ->
             State.switch_to ~id:(v :> int) ~domain ts
         | Some (`Suspend (domain, ts)) -> State.switch_to ~id:(-1) ~domain ts
+        | Some (`Parent (child, parent)) -> State.set_parent ~child ~parent
         | Some (`Resolved (v, _, ts)) ->
             State.resolved (v : int) ts
             (* XXX: When to do this State.remove_task v ?  *)
