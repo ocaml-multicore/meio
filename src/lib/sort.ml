@@ -87,6 +87,8 @@ let compare = function
           prepare;
           compare =
             (fun map t t2 ->
-              -Int.compare (Map.find t.id map) (Map.find t2.id map));
+              -Int.compare
+                 (Map.find_opt t.id map |> Option.value ~default:Int.max_int)
+                 (Map.find_opt t2.id map |> Option.value ~default:Int.max_int));
         }
   | _ -> V { prepare = (fun _ -> ()); compare = (fun _ _ _ -> 0) }
