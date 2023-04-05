@@ -34,6 +34,8 @@ end = struct
     t.count <- t.count + 1
 end
 
+type display = Auto | Yes | No | Toggle_requested
+
 type t = {
   id : int;
   parent_id : int;
@@ -46,8 +48,10 @@ type t = {
   status : status;
   kind : Eio.Private.Ctf.event;
   mutable selected : bool;
+  mutable display : display;
 }
 
+let is_active t = match t.status with Resolved _ -> false | _ -> true
 let get_current_busy t = Busy.total t.busy
 let equal a b = a.id = b.id && a.domain = b.domain
 
@@ -62,6 +66,7 @@ let create ~id ~domain ~parent_id start kind =
     name = [];
     loc = [];
     selected = false;
+    display = Auto;
     status = Paused;
     kind;
   }
