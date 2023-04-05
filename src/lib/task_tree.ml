@@ -58,6 +58,8 @@ let fold t fn acc =
   in
   List.fold_left fold_loop acc !(t.root)
 
+let iter t fn = fold t (fun () v -> fn v) () |> ignore
+
 let iter_with_prev t fn =
   fold t
     (fun prev v ->
@@ -70,25 +72,40 @@ type flatten_info = { last : bool; active : bool }
 
 let flatten t map =
   let rec map_loop ~depth t =
-    let v = map ~depth t.node in
-    let children = !(t.children) |> List.to_seq in
-    let next =
-      Seq.append
-        (children |> Seq.drop 1 |> Seq.map Option.some)
-        (Seq.return None)
+    let show_children =
+      match (t.node.Task.display, Task.is_active t.node) with
+      | Yes, _ -> true
+      | Auto, true -> true
+      | Toggle_requested, active ->
+          t.node.Task.display <- (if active then No else Yes);
+          not active
+      | No, _ -> false
+      | Auto, false -> false
     in
-    Seq.zip children next
-    |> Seq.flat_map (fun (child, next) ->
-           let depth =
-             (match next with
-             | None -> { last = true; active = false }
-             | Some { node = { Task.status = Resolved _; _ } } ->
-                 { last = false; active = false }
-             | _ -> { last = false; active = true })
-             :: depth
-           in
-           map_loop ~depth child)
-    |> Seq.cons v
+    let filtered = if show_children then false else !(t.children) <> [] in
+
+    let v = map ~depth ~filtered t.node in
+
+    if filtered then Seq.return v
+    else
+      let children = !(t.children) |> List.to_seq in
+      let next =
+        Seq.append
+          (children |> Seq.drop 1 |> Seq.map Option.some)
+          (Seq.return None)
+      in
+      Seq.zip children next
+      |> Seq.flat_map (fun (child, next) ->
+             let depth =
+               (match next with
+               | None -> { last = true; active = false }
+               | Some { node = { Task.status = Resolved _; _ } } ->
+                   { last = false; active = false }
+               | _ -> { last = false; active = true })
+               :: depth
+             in
+             map_loop ~depth child)
+      |> Seq.cons v
   in
   !(t.root) |> List.to_seq |> Seq.flat_map (map_loop ~depth:[])
 

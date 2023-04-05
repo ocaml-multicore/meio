@@ -126,6 +126,9 @@ let ui_loop ~q ~hist =
                 let s = Sort.next (Lwd.peek sort) in
                 Lwd.set sort s;
                 `Handled
+            | `Key (`Enter, _), _ ->
+                Console.toggle_fold_selected State.tasks;
+                `Handled
             | `Key (`Escape, _), _ ->
                 if s = `Main then Lwd.set quit true else Lwd.set screen `Main;
                 `Handled

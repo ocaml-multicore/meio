@@ -11,6 +11,16 @@ let set_prev_now now =
   let _, old = Lwd.peek prev_now in
   Lwd.set prev_now (old, now)
 
+let toggle_fold_selected t =
+  Task_tree.iter t (fun c ->
+      if c.Task.selected then
+        c.display <-
+          (match c.display with
+          | Toggle_requested -> Toggle_requested
+          | Yes -> No
+          | No -> Yes
+          | Auto -> Toggle_requested))
+
 let set_selected t = function
   | `Next ->
       let set = ref false in
@@ -57,16 +67,18 @@ let attr' selected active =
   let fg_attr = match active with true -> empty | false -> fg (gray 10) in
   if selected then selected_attr ++ fg_attr else fg_attr
 
-let render_tree_line depth is_active attr =
+let render_tree_line ~filtered depth is_active attr =
   let depth = match List.rev depth with [] -> [] | _ :: tl -> tl in
   let l = List.length depth in
   List.mapi
     (fun i { Task_tree.last; active } ->
-      match (i = l - 1, last) with
-      | true, false -> (" ├─ ", is_active)
-      | true, true -> (" └─ ", is_active)
-      | false, false -> (" │ ", active)
-      | false, true -> ("   ", false))
+      match (i = l - 1, last, filtered) with
+      | true, false, false -> (" ├─ ", is_active)
+      | true, true, false -> (" └─ ", is_active)
+      | true, false, true -> (" ╞═ ", is_active)
+      | true, true, true -> (" ╘═ ", is_active)
+      | false, false, _ -> (" │ ", active)
+      | false, true, _ -> ("   ", false))
     depth
   |> List.map (fun (s, is_active) -> W.string ~attr:(attr is_active) s)
   |> Ui.hcat
@@ -80,10 +92,10 @@ let cancellation_context_purpose_to_string = function
   | Sub -> "sub"
   | Root -> "root"
 
-let render_task sort now ~depth
+let render_task sort now ~depth ~filtered
     ({ Task.id; domain; start; loc; name; busy; selected; status; kind; _ } as
     t) =
-  let is_active = match status with Resolved _ -> false | _ -> true in
+  let is_active = Task.is_active t in
   let attr = attr' selected is_active in
   let attr =
     let open Notty.A in
@@ -103,7 +115,8 @@ let render_task sort now ~depth
   let entered = W.int ~attr (Task.Busy.count t.busy) in
   let name =
     if sort = Sort.Tree then
-      Ui.hcat [ render_tree_line depth is_active (attr' selected); name ]
+      Ui.hcat
+        [ render_tree_line ~filtered depth is_active (attr' selected); name ]
     else name
   in
   let kind =
