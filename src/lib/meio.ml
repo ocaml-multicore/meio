@@ -50,10 +50,7 @@ let task_events ~latency_begin ~latency_end q =
   |> add_callback Ctf.two_ids_type two_ids_callback
 
 let get_selected () =
-  Task_table.find_first
-    (fun v -> v.Task.selected)
-    (Lwd_table.first State.tasks.table)
-  |> fun v -> Option.bind v Lwd_table.get |> Option.get
+  Task_tree.find_first State.tasks (fun v -> v.Task.selected) |> Option.get
 
 let screens duration hist sort =
   [
@@ -105,10 +102,10 @@ let ui_loop ~q ~hist =
           (fun ev ->
             match (ev, selected_position) with
             | `Key (`Arrow `Down, _), Some (_, pos, bot) ->
-                Console.set_selected State.tasks `Prev;
+                Console.set_selected State.tasks `Next;
                 if pos = bot - 1 then `Unhandled else `Handled
             | `Key (`Arrow `Up, _), Some (top, pos, _) ->
-                Console.set_selected State.tasks `Next;
+                Console.set_selected State.tasks `Prev;
                 if pos = top + 1 then `Unhandled else `Handled
             | `Key (`ASCII 'h', _), _ ->
                 Lwd.set screen `Help;
@@ -128,7 +125,6 @@ let ui_loop ~q ~hist =
             | `Key (`ASCII 's', _), _ ->
                 let s = Sort.next (Lwd.peek sort) in
                 Lwd.set sort s;
-                State.set_sort_mode s;
                 `Handled
             | `Key (`Escape, _), _ ->
                 if s = `Main then Lwd.set quit true else Lwd.set screen `Main;
@@ -158,8 +154,7 @@ let ui_loop ~q ~hist =
         | Some (`Loc (i, l)) -> State.update_loc (i :> int) l
         | Some (`Name (i, l)) -> State.update_name (i :> int) l
         | Some (`Log (i, l)) -> State.update_logs (i :> int) l
-      done;
-      State.sort ())
+      done)
     ~tick_period:0.05 ui
 
 let ui handle =

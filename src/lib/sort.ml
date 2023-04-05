@@ -1,23 +1,10 @@
-type t = Domain | Id | Busy | Tree | No_sort
+type t = Domain | Id | Busy | Tree
 
-type sort =
-  | V : {
-      prepare : ((Task.t -> unit) -> unit) -> 'a;
-      compare : 'a -> Task.t -> Task.t -> int;
-    }
-      -> sort
-
-let next = function
-  | Busy -> Tree
-  | Tree -> No_sort
-  | No_sort -> Id
-  | Id -> Domain
-  | Domain -> Busy
+let next = function Busy -> Tree | Tree -> Id | Id -> Domain | Domain -> Busy
 
 let to_string = function
   | Busy -> "Busy"
   | Tree -> "Tree"
-  | No_sort -> "No_sort"
   | Id -> "Id"
   | Domain -> "Domain"
 
@@ -52,7 +39,7 @@ let topo_sort map =
                  | _ -> Some true)
                  :: depth
                in
-               payload.Task.depth <- depth;
+               (*  payload.Task.depth <- depth; *)
                ( topo_sort_dfs ~order:(order + 1) ~root:id ~depth
                    (Map.add payload.Task.id order acc),
                  n + 1 ))
@@ -77,16 +64,10 @@ let prepare iter =
           !map);
   topo_sort !map
 
-let by_state compare =
-  V
-    {
-      compare =
-        (fun () t t2 ->
-          match Int.compare (state_to_int t) (state_to_int t2) with
-          | 0 -> compare t t2
-          | v -> v);
-      prepare = (fun _ -> ());
-    }
+let by_state compare t t2 =
+  match Int.compare (state_to_int t) (state_to_int t2) with
+  | 0 -> compare t t2
+  | v -> -v
 
 let compare = function
   | Busy ->
@@ -94,14 +75,14 @@ let compare = function
       Int64.compare (Task.Busy.total t.busy) (Task.Busy.total t2.busy)
   | Id -> by_state @@ fun t t2 -> Int.compare t.id t2.id
   | Domain -> by_state @@ fun t t2 -> Int.compare t.domain t2.domain
-  | Tree ->
-      V
-        {
-          prepare;
-          compare =
-            (fun map t t2 ->
-              -Int.compare
-                 (Map.find_opt t.id map |> Option.value ~default:Int.max_int)
-                 (Map.find_opt t2.id map |> Option.value ~default:Int.max_int));
-        }
-  | _ -> V { prepare = (fun _ -> ()); compare = (fun _ _ _ -> 0) }
+  | _ -> fun _ _ -> 0
+
+let[@tail_mod_cons] rec merge cmp l1 l2 =
+  match (l1, l2) with
+  | [], l2 -> l2
+  | l1, [] -> l1
+  | h1 :: t1, h2 :: t2 ->
+      if cmp h1 h2 <= 0 then h1 :: merge cmp t1 l2 else h2 :: merge cmp l1 t2
+
+let merge_sort_monoid : ('a -> 'a -> int) -> 'a list Lwd_utils.monoid =
+ fun compare -> ([], merge compare)

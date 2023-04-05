@@ -43,10 +43,9 @@ type t = {
   name : string list;
   loc : string list;
   logs : string list;
-  mutable selected : bool;
   status : status;
-  mutable depth : bool option list; (* for the tree view *)
   kind : Eio.Private.Ctf.event;
+  mutable selected : bool;
 }
 
 let get_current_busy t = Busy.total t.busy
@@ -64,7 +63,6 @@ let create ~id ~domain ~parent_id start kind =
     loc = [];
     selected = false;
     status = Paused;
-    depth = [];
     kind;
   }
 

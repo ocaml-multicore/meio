@@ -14,7 +14,7 @@ let set_prev_now now =
 let set_selected t = function
   | `Next ->
       let set = ref false in
-      Task_table.iter_with_prev t (fun ~prev c ->
+      Task_tree.iter_with_prev t (fun ~prev c ->
           if !set then ()
           else
             match prev with
@@ -25,7 +25,7 @@ let set_selected t = function
                   c.Task.selected <- true;
                   set := true))
   | `Prev ->
-      Task_table.iter_with_prev t (fun ~prev c ->
+      Task_tree.iter_with_prev t (fun ~prev c ->
           match prev with
           | None -> ()
           | Some p ->
@@ -49,7 +49,7 @@ let green = W.string ~attr:Notty.A.(bg green)
 let selected_attr = Notty.A.(bg cyan)
 let resolved_attr = Notty.A.(fg (gray 10))
 
-let resize_uis widths (bg, _, uis) =
+let resize_uis widths (bg, _, uis, _) =
   List.map2 (fun w ui -> Ui.resize ~bg ~w ~pad:gravity_pad ui) widths uis
 
 let attr' selected active =
@@ -61,12 +61,12 @@ let render_tree_line depth is_active attr =
   let depth = match List.rev depth with [] -> [] | _ :: tl -> tl in
   let l = List.length depth in
   List.mapi
-    (fun i v ->
-      match (i = l - 1, v) with
-      | true, Some _ -> (" ├─ ", is_active)
-      | true, None -> (" └─ ", is_active)
-      | false, Some v -> (" │ ", v)
-      | false, None -> ("   ", false))
+    (fun i { Task_tree.last; active } ->
+      match (i = l - 1, last) with
+      | true, false -> (" ├─ ", is_active)
+      | true, true -> (" └─ ", is_active)
+      | false, false -> (" │ ", active)
+      | false, true -> ("   ", false))
     depth
   |> List.map (fun (s, is_active) -> W.string ~attr:(attr is_active) s)
   |> Ui.hcat
@@ -80,20 +80,9 @@ let cancellation_context_purpose_to_string = function
   | Sub -> "sub"
   | Root -> "root"
 
-let render_task sort now _
-    ({
-       Task.id;
-       domain;
-       start;
-       loc;
-       name;
-       busy;
-       selected;
-       status;
-       depth;
-       kind;
-       _;
-     } as t) =
+let render_task sort now ~depth
+    ({ Task.id; domain; start; loc; name; busy; selected; status; kind; _ } as
+    t) =
   let is_active = match status with Resolved _ -> false | _ -> true in
   let attr = attr' selected is_active in
   let attr =
@@ -126,9 +115,10 @@ let render_task sort now _
       | Task -> "task"
       | _ -> "??")
   in
-  [ (attr, selected, [ domain; id; kind; name; busy; idle; entered; loc ]) ]
+  (attr, selected, [ domain; id; kind; name; busy; idle; entered; loc ], t)
 
-let ui_monoid_list : (Notty.attr * bool * ui list) list Lwd_utils.monoid =
+let ui_monoid_list :
+    (Notty.attr * bool * ui list * Task.t) list Lwd_utils.monoid =
   ([], List.append)
 
 let header =
@@ -147,18 +137,23 @@ let init_widths = List.init (List.length header) (fun _ -> width)
 
 let root sort =
   let task_list =
-    Lwd.bind
-      ~f:(fun ((_, now), sort) ->
-        Lwd_table.map_reduce (render_task sort now) ui_monoid_list
-          State.tasks.table)
-      (Lwd.pair (Lwd.get prev_now) sort)
+    let open Lwd_infix in
+    let$ _, now = Lwd.get prev_now and$ sort = sort in
+    Task_tree.flatten State.tasks (render_task sort now)
+    |> List.of_seq
+    |>
+    match sort with
+    | Sort.Tree -> Fun.id
+    | some_sort ->
+        List.sort (fun (_, _, _, t1) (_, _, _, t2) -> Sort.compare sort t1 t2)
   in
+
   let widths =
     Lwd.map
       ~f:(fun uis ->
         let widths =
           List.fold_left
-            (fun acc (_, _, w) -> set_column_widths acc w)
+            (fun acc (_, _, w, _) -> set_column_widths acc w)
             init_widths uis
         in
         widths)
@@ -171,22 +166,19 @@ let root sort =
   let h_selected = Lwd.var 0 in
   let h_bottom = Lwd.var 0 in
   let table =
-    Lwd.map2
-      ~f:(fun widths ts ->
-        let widths = List.map (( + ) padding) widths in
-        List.fold_left
-          (fun acc ui ->
-            let line =
-              List.fold_left Ui.join_x Ui.empty (resize_uis widths ui)
-            in
-            let line =
-              match ui with
-              | _, true, _ -> Ui.transient_sensor (sensor_y h_selected) line
-              | _, _, _ -> line
-            in
-            Ui.join_y line acc)
-          Ui.empty ts)
-      widths task_list
+    let open Lwd_infix in
+    let$ widths = widths and$ ts = task_list in
+    let widths = List.map (( + ) padding) widths in
+    List.fold_left
+      (fun acc ui ->
+        let line = List.fold_left Ui.join_x Ui.empty (resize_uis widths ui) in
+        let line =
+          match ui with
+          | _, true, _, _ -> Ui.transient_sensor (sensor_y h_selected) line
+          | _, _, _, _ -> line
+        in
+        Ui.join_y acc line)
+      Ui.empty ts
   in
   let table_header =
     Lwd.map widths ~f:(fun w ->
