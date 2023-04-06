@@ -101,11 +101,11 @@ let ui_loop ~q ~hist =
         Nottui.Ui.event_filter
           (fun ev ->
             match (ev, selected_position) with
-            | `Key (`Arrow `Down, _), Some (_, pos, bot) ->
-                Console.set_selected State.tasks `Next;
+            | `Key (`Arrow `Down, _), Some (_, pos, bot, tasks) ->
+                Console.set_selected tasks `Next;
                 if pos = bot - 1 then `Unhandled else `Handled
-            | `Key (`Arrow `Up, _), Some (top, pos, _) ->
-                Console.set_selected State.tasks `Prev;
+            | `Key (`Arrow `Up, _), Some (top, pos, _, tasks) ->
+                Console.set_selected tasks `Prev;
                 if pos = top + 1 then `Unhandled else `Handled
             | `Key (`ASCII 'h', _), _ ->
                 Lwd.set screen `Help;

@@ -21,27 +21,28 @@ let toggle_fold_selected t =
           | No -> Yes
           | Auto -> Toggle_requested))
 
-let set_selected t = function
+let set_selected tasks action =
+  match action with
   | `Next ->
-      let set = ref false in
-      Task_tree.iter_with_prev t (fun ~prev c ->
-          if !set then ()
-          else
-            match prev with
-            | None -> ()
-            | Some p ->
-                if p.Task.selected then (
-                  p.selected <- false;
-                  c.Task.selected <- true;
-                  set := true))
+      let rec loop = function
+        | [] -> ()
+        | [ _ ] -> ()
+        | prev :: c :: rest when prev.Task.selected ->
+            prev.selected <- false;
+            c.Task.selected <- true
+        | _ :: rest -> loop rest
+      in
+      loop tasks
   | `Prev ->
-      Task_tree.iter_with_prev t (fun ~prev c ->
-          match prev with
-          | None -> ()
-          | Some p ->
-              if c.Task.selected then (
-                c.selected <- false;
-                p.selected <- true))
+      let rec loop = function
+        | [] -> ()
+        | [ _ ] -> ()
+        | prev :: c :: rest when c.Task.selected ->
+            c.selected <- false;
+            prev.Task.selected <- true
+        | _ :: rest -> loop rest
+      in
+      loop tasks
 
 let width = 6
 let padding = 3
@@ -68,7 +69,7 @@ let attr' selected active =
   if selected then selected_attr ++ fg_attr else fg_attr
 
 let render_tree_line ~filtered depth is_active attr =
-  let depth = match List.rev depth with [] -> [] | _ :: tl -> tl in
+  let depth = List.rev depth in
   let l = List.length depth in
   List.mapi
     (fun i { Task_tree.last; active } ->
@@ -207,8 +208,9 @@ let root sort =
     let open Lwd_infix in
     let$ top = Lwd.get h_top
     and$ selected = Lwd.get h_selected
-    and$ bottom = Lwd.get h_bottom in
-    Some (top, selected, bottom)
+    and$ bottom = Lwd.get h_bottom
+    and$ tasks = task_list in
+    Some (top, selected, bottom, tasks |> List.map (fun (_, _, _, t) -> t))
   in
   let footer = Lwd.map ~f:Ui.hcat (Help.footer sort) in
   ( [
