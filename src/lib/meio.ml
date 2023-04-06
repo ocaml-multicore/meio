@@ -86,6 +86,7 @@ let ui_loop ~q ~hist =
   let screen = Lwd.var `Main in
   let sort = Lwd.var Sort.Tree in
   let duration = Lwd.var 0L in
+  let show_logs = Lwd.var true in
   let screens = screens duration hist (Lwd.get sort) in
   let ui =
     Lwd.bind
@@ -136,6 +137,15 @@ let ui_loop ~q ~hist =
           ui)
       ui (Lwd.get screen)
   in
+
+  let logs =
+    Lwd_table.map_reduce
+      (fun _ line -> Notty.I.string Notty.A.empty line |> Nottui.Ui.atom)
+      Nottui.Ui.pack_y Logging.table
+  in
+  let ui = Nottui_widgets.v_pane ui logs in
+
+  Logs.info (fun f -> f "UI ready !");
   Nottui.Ui_loop.run ~quit_on_escape:false ~quit
     ~tick:(fun () ->
       Console.set_prev_now (Timestamp.current ());
@@ -161,6 +171,8 @@ let ui_loop ~q ~hist =
     ~tick_period:0.05 ui
 
 let ui handle =
+  Logs.set_reporter (Logging.reporter ());
+  Logs.set_level (Some Info);
   let q = Queue.create () in
   let cursor = Runtime_events.create_cursor (Some handle) in
   let hist, latency_begin, latency_end = Latency.init () in
