@@ -2,20 +2,31 @@ type 'a tree = { children : 'a c; mutable parent : 'a c; mutable node : 'a }
 and 'a c = 'a tree list ref
 
 type t = {
-  root : Task.t c;
+  root : Task.t tree;
   by_id : (int, Task.t tree) Hashtbl.t;
   mutable active_id : int;
 }
 
-let make () = { root = ref []; by_id = Hashtbl.create 100; active_id = -1 }
+let make () =
+  let by_id = Hashtbl.create 100 in
+  let node =
+    {
+      (Task.create ~id:(-1) ~domain:0 ~parent_id:(-1) 0L Task) with
+      name = [ "sleep" ];
+      selected = true;
+    }
+  in
+  let root = { node; parent = ref []; children = ref [] } in
+  Hashtbl.add by_id (-1) root;
+  { root; by_id; active_id = -1 }
+
 let node p task = { children = ref []; node = task; parent = p }
 
 let add t (task : Task.t) =
-  task.selected <- !(t.root) = [];
   let parent_id = task.parent_id in
   let parent_children_ref =
     match Hashtbl.find_opt t.by_id parent_id with
-    | None -> t.root
+    | None -> t.root.children
     | Some p -> p.children
   in
   let node = node parent_children_ref task in
@@ -24,7 +35,7 @@ let add t (task : Task.t) =
 
 let update t id fn =
   match Hashtbl.find_opt t.by_id id with
-  | None -> () (* todo warning *)
+  | None -> Logs.warn (fun f -> f "Could update fiber %d" id)
   | Some v -> v.node <- fn v.node
 
 let update_active t ~id ts =
@@ -32,7 +43,7 @@ let update_active t ~id ts =
       match node.status with
       | Active start ->
           Task.Busy.add node.busy (Int64.sub ts start);
-          { node with status = Paused }
+          { node with status = Paused ts }
       | _ -> node);
   update t id (fun node -> { node with status = Active ts });
   t.active_id <- id
@@ -56,7 +67,7 @@ let fold t fn acc =
   let rec fold_loop acc t =
     List.fold_left fold_loop (fn acc t.node) !(t.children)
   in
-  List.fold_left fold_loop acc !(t.root)
+  fold_loop acc t.root
 
 let iter t fn = fold t (fun () v -> fn v) () |> ignore
 
@@ -107,10 +118,10 @@ let flatten t map =
              map_loop ~depth child)
       |> Seq.cons v
   in
-  !(t.root) |> List.to_seq |> Seq.flat_map (map_loop ~depth:[])
+  map_loop ~depth:[] t.root
 
 let find_first t fn =
   let rec loop t =
     if fn t.node then Some t.node else List.find_map loop !(t.children)
   in
-  List.find_map loop !(t.root)
+  loop t.root
