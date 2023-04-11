@@ -63,24 +63,30 @@ let screens duration hist sort =
     (`Gc, fun () -> (Latency.ui hist duration, Lwd.return None));
   ]
 
-let sleep f = if f >= 1e-6 then Unix.sleepf f
+let min_thresh = 1e-6
+let sleepf f = if f > min_thresh then Unix.sleepf f
 
-let runtime_event_loop ~stop ~cursor ~callbacks =
+module Queue = Eio_utils.Lf_queue
+
+let runtime_event_loop ~child_pid ~q ~stop ~cursor ~callbacks =
   let max_sleep = 0.01 in
   let sleep = ref max_sleep in
   while not (Atomic.get stop) do
     let count = Runtime_events.read_poll cursor callbacks None in
     if count = 0 then (
       (* increase sleep time if there's no events *)
-      Unix.sleepf !sleep;
+      sleepf !sleep;
       sleep := min max_sleep (!sleep *. 1.2))
     else (
       (* decrease sleep time in case of events *)
-      sleep := !sleep /. 1.2;
-      Unix.sleepf !sleep)
+      sleep := max min_thresh (!sleep /. 1.2);
+      sleepf !sleep);
+    if !sleep = max_sleep then
+      let child_pid, child_status = Unix.waitpid [ WNOHANG ] child_pid in
+      if child_pid <> 0 then (
+        Atomic.set stop true;
+        Queue.push q (`Terminated child_status))
   done
-
-module Queue = Eio_utils.Lf_queue
 
 let ui_loop ~q ~hist =
   let screen = Lwd.var `Main in
@@ -148,6 +154,7 @@ let ui_loop ~q ~hist =
   Logs.info (fun f -> f "UI ready !");
   Nottui.Ui_loop.run ~quit_on_escape:false ~quit
     ~tick:(fun () ->
+      Logging.poll ();
       Console.set_prev_now (Timestamp.current ());
       let now = Lwd.peek duration in
       Lwd.set duration
@@ -167,10 +174,12 @@ let ui_loop ~q ~hist =
         | Some (`Loc (i, l)) -> State.update_loc (i :> int) l
         | Some (`Name (i, l)) -> State.update_name (i :> int) l
         | Some (`Log (i, l)) -> State.update_logs (i :> int) l
+        | Some (`Terminated status) ->
+            State.terminated status (Timestamp.current ())
       done)
     ~tick_period:0.05 ui
 
-let ui handle =
+let ui ~child_pid handle =
   Logs.set_reporter (Logging.reporter ());
   Logs.set_level (Some Info);
   let q = Queue.create () in
@@ -180,7 +189,8 @@ let ui handle =
   let callbacks = task_events q ~latency_begin ~latency_end in
   let stop = Atomic.make false in
   let domain =
-    Domain.spawn (fun () -> runtime_event_loop ~stop ~cursor ~callbacks)
+    Domain.spawn (fun () ->
+        runtime_event_loop ~child_pid ~q ~stop ~cursor ~callbacks)
   in
   ui_loop ~q ~hist;
   Atomic.set stop true;
