@@ -35,7 +35,7 @@ let add t (task : Task.t) =
 
 let update t id fn =
   match Hashtbl.find_opt t.by_id id with
-  | None -> Logs.warn (fun f -> f "Could update fiber %d" id)
+  | None -> Logs.warn (fun f -> f "Couldn't update fiber %d" id)
   | Some v -> v.node <- fn v.node
 
 let update_active t ~id ts =
