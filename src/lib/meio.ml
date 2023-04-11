@@ -95,7 +95,7 @@ let ui_loop ~q ~hist =
   let screen = Lwd.var `Main in
   let sort = Lwd.var Sort.Tree in
   let duration = Lwd.var 0L in
-  let show_logs = Lwd.var true in
+  let show_logs = Lwd.var false in
   let screens = screens duration hist (Lwd.get sort) in
   let ui =
     Lwd.bind
@@ -132,6 +132,9 @@ let ui_loop ~q ~hist =
             | `Key (`ASCII 'q', _), _ ->
                 Lwd.set quit true;
                 `Handled
+            | `Key (`ASCII 'l', _), _ ->
+                Lwd.set show_logs (Lwd.peek show_logs |> not);
+                `Handled
             | `Key (`ASCII 's', _), _ ->
                 let s = Sort.next (Lwd.peek sort) in
                 Lwd.set sort s;
@@ -146,13 +149,21 @@ let ui_loop ~q ~hist =
           ui)
       ui (Lwd.get screen)
   in
-
   let logs =
     Lwd_table.map_reduce
       (fun _ line -> Notty.I.string Notty.A.empty line |> Nottui.Ui.atom)
       Nottui.Ui.pack_y Logging.table
   in
-  let ui = Nottui_widgets.v_pane ui logs in
+  let ui =
+    let open Lwd_infix in
+    let$* show_logs = Lwd.get show_logs in
+    if show_logs then Nottui_widgets.v_pane ui logs else ui
+  in
+
+  let ui =
+    Lwd.map2 ~f:Nottui.Ui.join_y ui
+      (Help.footer (Lwd.get sort) (Lwd.get screen))
+  in
 
   Logs.info (fun f -> f "UI ready !");
   Nottui.Ui_loop.run ~quit_on_escape:false ~quit
