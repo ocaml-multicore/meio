@@ -8,7 +8,10 @@ let task_events ~latency_begin ~latency_end q =
   let module Queue = Eio_utils.Lf_queue in
   let evs =
     Runtime_events.Callbacks.create ~runtime_begin:latency_begin
-      ~runtime_end:latency_end ()
+      ~runtime_end:latency_end
+      ~lost_events:(fun domain count ->
+        Logs.warn (fun f -> f "[Domain %d] Lost %d events." domain count))
+      ()
   in
   let id_event_callback d ts c ((i : Ctf.id), v) =
     match (Runtime_events.User.tag c, v) with
