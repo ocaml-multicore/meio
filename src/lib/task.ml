@@ -2,7 +2,7 @@ open Nottui
 module W = Nottui_widgets
 module H = Hdr_histogram
 
-type status = Paused | Active of int64 | Resolved of int64
+type status = Paused of int64 | Active of int64 | Resolved of int64
 
 module Busy : sig
   type t
@@ -67,7 +67,7 @@ let create ~id ~domain ~parent_id start kind =
     loc = [];
     selected = false;
     display = Auto;
-    status = Paused;
+    status = Paused 0L;
     kind;
   }
 
