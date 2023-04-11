@@ -127,13 +127,13 @@ let render_task sort now ~depth ~filtered
     let busy_box =
       match color_busy with
       | Some color -> W.string ~attr:Notty.A.(attr ++ fg color) "●"
-      | None -> W.string " "
+      | None -> W.string ~attr " "
     in
     Ui.join_x busy_box busy
   in
   let idle = W.string ~attr @@ Fmt.(to_to_string uint64_ns_span idle) in
-  let loc = W.string ~attr (String.concat "\n" loc) in
-  let name = W.string ~attr (String.concat "\n" name) in
+  let loc = W.string ~attr (try List.hd loc with Failure _ -> "") in
+  let name = W.string ~attr (try List.hd name with Failure _ -> "") in
   let entered = W.int ~attr (Task.Busy.count t.busy) in
   let name =
     if sort = Sort.Tree then
@@ -233,7 +233,6 @@ let root sort =
     and$ tasks = task_list in
     Some (top, selected, bottom, tasks |> List.map (fun (_, _, _, t) -> t))
   in
-  let footer = Lwd.map ~f:Ui.hcat (Help.footer sort) in
   ( [
       W.vbox
         [
@@ -244,7 +243,7 @@ let root sort =
         ]
       |> Nottui_extended.scroll_area ~direction:`Horizontal
       |> W.scrollbox;
-      Lwd.map ~f:(Ui.permanent_sensor (sensor_y h_bottom)) footer;
+      Lwd.map ~f:(Ui.permanent_sensor (sensor_y h_bottom)) (Lwd.return Ui.empty);
     ]
     |> W.vbox,
     selected_position )
