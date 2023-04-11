@@ -19,7 +19,7 @@ let run _stdenv exec_args =
   in
   Unix.sleepf 0.2;
   let handle = (tmp_dir, child_pid) in
-  Meio.ui handle;
+  Meio.ui ~child_pid handle;
   Unix.close dev_null;
   Unix.kill child_pid Sys.sigkill;
   let ring_file =

@@ -71,6 +71,13 @@ let fold t fn acc =
 
 let iter t fn = fold t (fun () v -> fn v) () |> ignore
 
+let iter_mut t fn =
+  let rec fold_loop t =
+    t.node <- fn t.node;
+    List.iter fold_loop !(t.children)
+  in
+  fold_loop t.root
+
 let iter_with_prev t fn =
   fold t
     (fun prev v ->

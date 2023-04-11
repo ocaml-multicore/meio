@@ -26,3 +26,13 @@ let set_parent ~child ~parent = Task_tree.set_parent tasks ~child ~parent
 let resolved v ts =
   Task_tree.update tasks v (fun t ->
       { t with status = Resolved (Runtime_events.Timestamp.to_int64 ts) })
+
+let terminated status ts =
+  let reason_str =
+    match status with
+    | Unix.WEXITED code -> Fmt.str "exited (%d)" code
+    | Unix.WSIGNALED s -> Fmt.str "signaled (%d)" s
+    | Unix.WSTOPPED s -> Fmt.str "stopped (%d)" s
+  in
+  Logs.info (fun f -> f "Child process terminated with status %s" reason_str);
+  Task_tree.iter_mut tasks (fun t -> { t with status = Resolved ts })
