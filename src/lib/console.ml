@@ -108,7 +108,7 @@ let render_task sort now ~depth ~filtered
   let total = Int64.sub now start in
   let color_busy =
     match status with
-    | Active v -> Notty.A.white
+    | Active v -> Some Notty.A.white
     | Paused since ->
         let scale =
           255 - (Int64.div (Int64.sub now since) 2_000_000L |> Int64.to_int)
@@ -116,15 +116,21 @@ let render_task sort now ~depth ~filtered
         let scale =
           if scale < 0 then 0 else if scale > 255 then 255 else scale
         in
-        Notty.A.rgb_888 ~r:scale ~g:scale ~b:scale
-    | _ -> Notty.A.black
+        Some (Notty.A.rgb_888 ~r:scale ~g:scale ~b:scale)
+    | _ -> None
   in
   let active_busy = match status with Active v -> Int64.sub now v | _ -> 0L in
   let total_busy = Int64.add active_busy (Task.Busy.total busy) in
   let idle = max 0L (Int64.sub total total_busy) in
   let busy = W.string ~attr @@ Fmt.(str " %a" uint64_ns_span total_busy) in
-  let busy_box = W.string ~attr:Notty.A.(attr ++ fg color_busy) "●" in
-  let busy = Ui.join_x busy_box busy in
+  let busy =
+    let busy_box =
+      match color_busy with
+      | Some color -> W.string ~attr:Notty.A.(attr ++ fg color) "●"
+      | None -> W.string " "
+    in
+    Ui.join_x busy_box busy
+  in
   let idle = W.string ~attr @@ Fmt.(to_to_string uint64_ns_span idle) in
   let loc = W.string ~attr (String.concat "\n" loc) in
   let name = W.string ~attr (String.concat "\n" name) in
