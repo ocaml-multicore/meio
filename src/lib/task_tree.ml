@@ -12,7 +12,9 @@ let make () =
   let by_id = Hashtbl.create 100 in
   let node =
     {
-      (Task.create ~id:(-1) ~domain:0 ~parent_id:(-1) 0L Task) with
+      (Task.create ~id:(-1) ~domain:0 ~parent_id:(-1) (Timestamp.current ())
+         Task)
+      with
       name = [ "sleep" ];
       selected = ref true;
     }
