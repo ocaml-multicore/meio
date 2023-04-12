@@ -12,26 +12,43 @@ module Busy : sig
   val count : t -> int
   val hist : t -> H.t
   val add : t -> int64 -> unit
+  val merge : t -> t -> t
 end = struct
-  type t = { mutable total : int64; mutable count : int; hist : H.t }
+  type t =
+    | Leaf of { mutable total : int64; mutable count : int; hist : H.t }
+    | Merge of (t * t)
 
   let make () =
-    {
-      total = 0L;
-      count = 0;
-      hist =
-        H.init ~lowest_discernible_value:10
-          ~highest_trackable_value:10_000_000_000 ~significant_figures:3;
-    }
+    Leaf
+      {
+        total = 0L;
+        count = 0;
+        hist =
+          H.init ~lowest_discernible_value:10
+            ~highest_trackable_value:10_000_000_000 ~significant_figures:3;
+      }
 
-  let total t = t.total
-  let count t = t.count
-  let hist t = t.hist
+  let rec total = function
+    | Merge (a, b) -> Int64.add (total a) (total b)
+    | Leaf t -> t.total
+
+  let rec count = function
+    | Merge (a, b) -> count a + count b
+    | Leaf t -> t.count
+
+  let hist = function
+    | Merge _ -> invalid_arg "Cannot hist merge view"
+    | Leaf t -> t.hist
 
   let add t value =
-    assert (H.record_value t.hist (Int64.to_int value));
-    t.total <- Int64.add t.total value;
-    t.count <- t.count + 1
+    match t with
+    | Merge _ -> invalid_arg "Cannot add to merge view"
+    | Leaf t ->
+        assert (H.record_value t.hist (Int64.to_int value));
+        t.total <- Int64.add t.total value;
+        t.count <- t.count + 1
+
+  let merge a b = Merge (a, b)
 end
 
 type display = Auto | Yes | No | Toggle_requested
