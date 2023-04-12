@@ -69,8 +69,6 @@ type t = {
 }
 
 let is_active t = match t.status with Resolved _ -> false | _ -> true
-let get_current_busy t = Busy.total t.busy
-let equal a b = a.id = b.id && a.domain = b.domain
 
 let create ~id ~domain ~parent_id start kind =
   {
@@ -90,9 +88,6 @@ let create ~id ~domain ~parent_id start kind =
 
 let percentiles =
   [ 25.0; 50.0; 60.0; 70.0; 80.0; 90.0; 95.0; 99.0; 99.9; 99.99 ]
-
-let max_list =
-  List.fold_left (fun max v -> if Int64.compare v max > 0 then v else max) 0L
 
 let make_histogram task = Busy.hist task.busy
 let ns_span i = Fmt.(to_to_string uint64_ns_span (Int64.of_int i))
