@@ -15,8 +15,20 @@ end
 
 type display = Auto | Yes | No | Toggle_requested
 
+module Id : sig
+  type t
+  type eio
+
+  val pp : t Fmt.t
+  val compare : t -> t -> int
+  val fork : t -> t
+  val eio : t -> eio
+  val pp_eio : eio Fmt.t
+  val eio_of_int : int -> eio
+end
+
 type t = {
-  id : int;
+  id : Id.t;
   parent_id : int;
   domain : int;
   start : int64;

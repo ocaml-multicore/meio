@@ -21,7 +21,7 @@ let by_state compare t t2 =
 let compare = function
   | Busy ->
       by_state @@ fun t t2 ->
-      Int64.compare (Task.Busy.total t.busy) (Task.Busy.total t2.busy)
-  | Id -> by_state @@ fun t t2 -> Int.compare t.id t2.id
+      -Int64.compare (Task.Busy.total t.busy) (Task.Busy.total t2.busy)
+  | Id -> by_state @@ fun t t2 -> Task.Id.compare t.id t2.id
   | Domain -> by_state @@ fun t t2 -> Int.compare t.domain t2.domain
   | _ -> fun _ _ -> 0
