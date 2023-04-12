@@ -1,7 +1,6 @@
 module Ctf = Eio.Private.Ctf
 
 let add_callback = Runtime_events.Callbacks.add_user_event
-let timestamp s = Runtime_events.Timestamp.to_int64 s |> Int64.to_string
 
 let task_events ~latency_begin ~latency_end q =
   let current_id = ref (-1) in
@@ -95,7 +94,7 @@ let ui_loop ~q ~hist =
   let screen = Lwd.var `Main in
   let sort = Lwd.var Sort.Tree in
   let duration = Lwd.var 0L in
-  let show_logs = Lwd.var false in
+  let show_logs = Lwd.var true in
   let screens = screens duration hist (Lwd.get sort) in
   let ui =
     Lwd.bind

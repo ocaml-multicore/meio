@@ -18,7 +18,7 @@ let update_logs i logs =
 let update_name i name =
   Task_tree.update tasks i (fun t -> { t with Task.name = name :: t.name })
 
-let switch_to ~id ~domain ts =
+let switch_to ~id ~domain:_ ts =
   Task_tree.update_active tasks ~id (Runtime_events.Timestamp.to_int64 ts)
 
 let set_parent ~child ~parent = Task_tree.set_parent tasks ~child ~parent

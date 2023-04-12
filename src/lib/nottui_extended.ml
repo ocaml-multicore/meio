@@ -1,4 +1,4 @@
-let mini, maxi, clampi = Lwd_utils.(mini, maxi, clampi)
+let maxi, clampi = Lwd_utils.(maxi, clampi)
 let scroll_step = 1
 
 module Ui = Nottui.Ui

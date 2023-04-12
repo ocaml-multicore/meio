@@ -156,7 +156,7 @@ let flatten t map =
              let depth =
                (match next with
                | None -> { last = true; active = false }
-               | Some { node = { Task.status = Resolved _; _ } } ->
+               | Some { node = { Task.status = Resolved _; _ }; _ } ->
                    { last = false; active = false }
                | _ -> { last = false; active = true })
                :: depth

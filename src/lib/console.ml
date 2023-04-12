@@ -27,7 +27,7 @@ let set_selected tasks action =
       let rec loop = function
         | [] -> ()
         | [ _ ] -> ()
-        | prev :: c :: rest when !(prev.Task.selected) ->
+        | prev :: c :: _ when !(prev.Task.selected) ->
             prev.selected := false;
             c.Task.selected := true
         | _ :: rest -> loop rest
@@ -37,7 +37,7 @@ let set_selected tasks action =
       let rec loop = function
         | [] -> ()
         | [ _ ] -> ()
-        | prev :: c :: rest when !(c.Task.selected) ->
+        | prev :: c :: _ when !(c.Task.selected) ->
             c.selected := false;
             prev.Task.selected := true
         | _ :: rest -> loop rest
@@ -58,7 +58,6 @@ let set_column_widths acc ws =
 
 let green = W.string ~attr:Notty.A.(bg green)
 let selected_attr = Notty.A.(bg cyan)
-let resolved_attr = Notty.A.(fg (gray 10))
 
 let resize_uis widths (bg, _, uis, _) =
   List.map2 (fun w ui -> Ui.resize ~bg ~w ~pad:gravity_pad ui) widths uis
@@ -97,7 +96,7 @@ let render_task sort now ~depth ~filtered
     ({ Task.id; domain; start; loc; name; busy; selected; status; kind; _ } as
     t) =
   let is_active = Task.is_active t in
-  let attr = attr' (!selected) is_active in
+  let attr = attr' !selected is_active in
   let attr =
     let open Notty.A in
     match status with Active _ -> attr ++ st bold | _ -> attr
@@ -108,7 +107,7 @@ let render_task sort now ~depth ~filtered
   let total = Int64.sub now start in
   let color_busy =
     match status with
-    | Active v -> Some Notty.A.white
+    | Active _ -> Some Notty.A.white
     | Paused since ->
         let scale =
           255 - (Int64.div (Int64.sub now since) 2_000_000L |> Int64.to_int)
@@ -138,7 +137,7 @@ let render_task sort now ~depth ~filtered
   let name =
     if sort = Sort.Tree then
       Ui.hcat
-        [ render_tree_line ~filtered depth is_active (attr' (!selected)); name ]
+        [ render_tree_line ~filtered depth is_active (attr' !selected); name ]
     else name
   in
   let kind =
@@ -151,10 +150,6 @@ let render_task sort now ~depth ~filtered
       | _ -> "??")
   in
   (attr, !selected, [ domain; id; kind; name; busy; idle; entered; loc ], t)
-
-let ui_monoid_list :
-    (Notty.attr * bool * ui list * Task.t) list Lwd_utils.monoid =
-  ([], List.append)
 
 let header =
   [
@@ -179,7 +174,7 @@ let root sort =
     |>
     match sort with
     | Sort.Tree -> Fun.id
-    | some_sort ->
+    | _ ->
         List.sort (fun (_, _, _, t1) (_, _, _, t2) -> Sort.compare sort t1 t2)
   in
 
