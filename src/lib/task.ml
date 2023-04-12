@@ -64,8 +64,8 @@ type t = {
   logs : string list;
   status : status;
   kind : Eio.Private.Ctf.event;
-  mutable selected : bool;
-  mutable display : display;
+  selected : bool ref;
+  display : display ref;
 }
 
 let is_active t = match t.status with Resolved _ -> false | _ -> true
@@ -82,8 +82,8 @@ let create ~id ~domain ~parent_id start kind =
     logs = [];
     name = [];
     loc = [];
-    selected = false;
-    display = Auto;
+    selected = ref false;
+    display = ref Auto;
     status = Paused 0L;
     kind;
   }

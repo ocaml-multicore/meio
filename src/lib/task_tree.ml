@@ -13,7 +13,7 @@ let make () =
     {
       (Task.create ~id:(-1) ~domain:0 ~parent_id:(-1) 0L Task) with
       name = [ "sleep" ];
-      selected = true;
+      selected = ref true;
     }
   in
   let root = { node; parent = ref []; children = ref [] } in
@@ -91,11 +91,11 @@ type flatten_info = { last : bool; active : bool }
 let flatten t map =
   let rec map_loop ~depth t =
     let show_children =
-      match (t.node.Task.display, Task.is_active t.node) with
+      match (!(t.node.Task.display), Task.is_active t.node) with
       | Yes, _ -> true
       | Auto, true -> true
       | Toggle_requested, active ->
-          t.node.Task.display <- (if active then No else Yes);
+          t.node.Task.display := if active then No else Yes;
           not active
       | No, _ -> false
       | Auto, false -> false
