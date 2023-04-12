@@ -3,6 +3,7 @@ and 'a c = 'a tree list ref
 
 type t = {
   root : Task.t tree;
+  pending : (int, Task.t) Hashtbl.t;
   by_id : (int, Task.t tree) Hashtbl.t;
   mutable active_id : int;
 }
@@ -18,24 +19,17 @@ let make () =
   in
   let root = { node; parent = ref []; children = ref [] } in
   Hashtbl.add by_id (-1) root;
-  { root; by_id; active_id = -1 }
+  { root; by_id; active_id = -1; pending = Hashtbl.create 100 }
 
 let node p task = { children = ref []; node = task; parent = p }
-
-let add t (task : Task.t) =
-  let parent_id = task.parent_id in
-  let parent_children_ref =
-    match Hashtbl.find_opt t.by_id parent_id with
-    | None -> t.root.children
-    | Some p -> p.children
-  in
-  let node = node parent_children_ref task in
-  Hashtbl.add t.by_id task.id node;
-  parent_children_ref := node :: !parent_children_ref
+let add t (task : Task.t) = Hashtbl.add t.pending task.id task
 
 let update t id fn =
   match Hashtbl.find_opt t.by_id id with
-  | None -> Logs.warn (fun f -> f "Couldn't update fiber %d" id)
+  | None -> (
+      match Hashtbl.find_opt t.pending id with
+      | None -> Logs.warn (fun f -> f "Couldn't update fiber %d" id)
+      | Some v -> Hashtbl.replace t.pending v.id (fn v))
   | Some v -> v.node <- fn v.node
 
 let update_active t ~id ts =
@@ -49,19 +43,28 @@ let update_active t ~id ts =
   t.active_id <- id
 
 let set_parent t ~child ~parent =
+  Logs.debug (fun f -> f "set parent %d -> %d" child parent);
   match Hashtbl.find_opt t.by_id parent with
   | None -> ()
   | Some parent -> (
-      match Hashtbl.find_opt t.by_id child with
-      | None -> ()
-      | Some child ->
-          child.parent :=
-            List.filter
-              (fun v -> v.node.Task.id <> child.node.id)
-              !(child.parent);
+      match Hashtbl.find_opt t.pending child with
+      | Some child_task ->
+          Logs.debug (fun f -> f "new child %d" child);
+          let node = node parent.children child_task in
+          parent.children := node :: !(parent.children);
+          Hashtbl.remove t.pending child;
+          Hashtbl.add t.by_id child node
+      | None -> (
+          match Hashtbl.find_opt t.by_id child with
+          | None -> ()
+          | Some child ->
+              child.parent :=
+                List.filter
+                  (fun v -> v.node.Task.id <> child.node.id)
+                  !(child.parent);
 
-          parent.children := child :: !(parent.children);
-          child.parent <- parent.children)
+              parent.children := child :: !(parent.children);
+              child.parent <- parent.children))
 
 let rec fold_node (t : 'a tree) fn acc =
   List.fold_left (fun a b -> fold_node b fn a) (fn acc t.node) !(t.children)
