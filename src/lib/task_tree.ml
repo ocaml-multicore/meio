@@ -63,12 +63,10 @@ let set_parent t ~child ~parent =
           parent.children := child :: !(parent.children);
           child.parent <- parent.children)
 
-let fold t fn acc =
-  let rec fold_loop acc t =
-    List.fold_left fold_loop (fn acc t.node) !(t.children)
-  in
-  fold_loop acc t.root
+let rec fold_node (t : 'a tree) fn acc =
+  List.fold_left (fun a b -> fold_node b fn a) (fn acc t.node) !(t.children)
 
+let fold t fn acc = fold_node t.root fn acc
 let iter t fn = fold t (fun () v -> fn v) () |> ignore
 
 let iter_mut t fn =
@@ -88,6 +86,26 @@ let iter_with_prev t fn =
 
 type flatten_info = { last : bool; active : bool }
 
+let merge_status st1 st2 =
+  match (st1, st2) with
+  | Task.Active a, _ -> Task.Active a
+  | _, Task.Active b -> Active b
+  | Paused a, Paused b when a > b -> Paused a
+  | _, Paused b -> Paused b
+  | Paused a, _ -> Paused a
+  | Resolved a, Resolved b when a > b -> Resolved a
+  | _, Resolved b -> Resolved b
+
+let merge_stats ~(base : Task.t) (t : Task.t) =
+  if !(t.selected) then (
+    base.selected := true;
+    t.selected := false);
+  {
+    base with
+    busy = Task.Busy.merge base.busy t.busy;
+    status = merge_status base.status t.status;
+  }
+
 let flatten t map =
   let rec map_loop ~depth t =
     let show_children =
@@ -102,7 +120,19 @@ let flatten t map =
     in
     let filtered = if show_children then false else !(t.children) <> [] in
 
-    let v = map ~depth ~filtered t.node in
+    let node =
+      if show_children then t.node
+      else
+        fold_node t
+          (fun acc t ->
+            match acc with
+            | None -> Some t
+            | Some base -> Some (merge_stats ~base t))
+          None
+        |> Option.get
+    in
+
+    let v = map ~depth ~filtered node in
 
     if filtered then Seq.return v
     else
