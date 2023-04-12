@@ -13,13 +13,13 @@ let set_prev_now now =
 
 let toggle_fold_selected t =
   Task_tree.iter t (fun c ->
-      if c.Task.selected then
-        c.display <-
-          (match c.display with
+      if !(c.Task.selected) then
+        c.display :=
+          match !(c.display) with
           | Toggle_requested -> Toggle_requested
           | Yes -> No
           | No -> Yes
-          | Auto -> Toggle_requested))
+          | Auto -> Toggle_requested)
 
 let set_selected tasks action =
   match action with
@@ -27,9 +27,9 @@ let set_selected tasks action =
       let rec loop = function
         | [] -> ()
         | [ _ ] -> ()
-        | prev :: c :: rest when prev.Task.selected ->
-            prev.selected <- false;
-            c.Task.selected <- true
+        | prev :: c :: rest when !(prev.Task.selected) ->
+            prev.selected := false;
+            c.Task.selected := true
         | _ :: rest -> loop rest
       in
       loop tasks
@@ -37,9 +37,9 @@ let set_selected tasks action =
       let rec loop = function
         | [] -> ()
         | [ _ ] -> ()
-        | prev :: c :: rest when c.Task.selected ->
-            c.selected <- false;
-            prev.Task.selected <- true
+        | prev :: c :: rest when !(c.Task.selected) ->
+            c.selected := false;
+            prev.Task.selected := true
         | _ :: rest -> loop rest
       in
       loop tasks
@@ -97,7 +97,7 @@ let render_task sort now ~depth ~filtered
     ({ Task.id; domain; start; loc; name; busy; selected; status; kind; _ } as
     t) =
   let is_active = Task.is_active t in
-  let attr = attr' selected is_active in
+  let attr = attr' (!selected) is_active in
   let attr =
     let open Notty.A in
     match status with Active _ -> attr ++ st bold | _ -> attr
@@ -138,7 +138,7 @@ let render_task sort now ~depth ~filtered
   let name =
     if sort = Sort.Tree then
       Ui.hcat
-        [ render_tree_line ~filtered depth is_active (attr' selected); name ]
+        [ render_tree_line ~filtered depth is_active (attr' (!selected)); name ]
     else name
   in
   let kind =
@@ -150,7 +150,7 @@ let render_task sort now ~depth ~filtered
       | Task -> "task"
       | _ -> "??")
   in
-  (attr, selected, [ domain; id; kind; name; busy; idle; entered; loc ], t)
+  (attr, !selected, [ domain; id; kind; name; busy; idle; entered; loc ], t)
 
 let ui_monoid_list :
     (Notty.attr * bool * ui list * Task.t) list Lwd_utils.monoid =

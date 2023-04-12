@@ -53,7 +53,7 @@ let task_events ~latency_begin ~latency_end q =
   |> add_callback Ctf.two_ids_type two_ids_callback
 
 let get_selected () =
-  Task_tree.find_first State.tasks (fun v -> v.Task.selected) |> Option.get
+  Task_tree.find_first State.tasks (fun v -> !(v.Task.selected)) |> Option.get
 
 let screens duration hist sort =
   [
