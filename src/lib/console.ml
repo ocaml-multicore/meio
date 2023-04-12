@@ -11,15 +11,17 @@ let set_prev_now now =
   let _, old = Lwd.peek prev_now in
   Lwd.set prev_now (old, now)
 
-let toggle_fold_selected t =
+let toggle_fold t fn =
   Task_tree.iter t (fun c ->
-      if !(c.Task.selected) then
+      if fn c then
         c.display :=
           match !(c.display) with
           | Toggle_requested -> Toggle_requested
           | Yes -> No
           | No -> Yes
           | Auto -> Toggle_requested)
+
+let toggle_fold_selected t = toggle_fold t (fun c -> !(c.Task.selected))
 
 let set_selected tasks action =
   match action with
@@ -33,6 +35,9 @@ let set_selected tasks action =
         | _ :: rest -> loop rest
       in
       loop tasks
+  | `Click id ->
+      List.iter (fun t -> if !(t.Task.selected) then t.selected := false) tasks;
+      List.iter (fun t -> if t.Task.id = id then t.selected := true) tasks
   | `Prev ->
       let rec loop = function
         | [] -> ()
@@ -170,6 +175,7 @@ let header =
   ]
 
 let init_widths = List.init (List.length header) (fun _ -> width)
+let column_widths = ref init_widths
 
 let root sort =
   let task_list =
@@ -190,8 +196,9 @@ let root sort =
         let widths =
           List.fold_left
             (fun acc (_, _, w, _) -> set_column_widths acc w)
-            init_widths uis
+            !column_widths uis
         in
+        column_widths := widths;
         widths)
       task_list
   in
@@ -212,6 +219,23 @@ let root sort =
           match ui with
           | _, true, _, _ -> Ui.transient_sensor (sensor_y h_selected) line
           | _, _, _, _ -> line
+        in
+        let line =
+          let _, _, _, t = ui in
+          Ui.mouse_area
+            (fun ~x ~y btn ->
+              match btn with
+              | `Left ->
+                  if !(t.Task.selected) then
+                    toggle_fold State.tasks (fun f -> f.id = t.id)
+                  else
+                    set_selected
+                      (ts |> List.map (fun (_, _, _, t) -> t))
+                      (`Click t.Task.id);
+                  `Handled
+              | `Right -> `Handled
+              | _ -> `Unhandled)
+            line
         in
         Ui.join_y acc line)
       Ui.empty ts
