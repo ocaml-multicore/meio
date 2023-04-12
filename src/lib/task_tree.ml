@@ -38,7 +38,11 @@ let update_active t ~id ts =
   update t t.active_id (fun node ->
       match node.status with
       | Active start ->
-          Task.Busy.add node.busy (Int64.sub ts start);
+          let value = Int64.sub ts start in
+          if value < 0L then
+            Logs.err (fun f ->
+                f "Invalid timestamp for %d (%Ld)" t.active_id value)
+          else Task.Busy.add node.busy value;
           { node with status = Paused ts }
       | _ -> node);
   update t id (fun node -> { node with status = Active ts });
