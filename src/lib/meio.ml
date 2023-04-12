@@ -18,9 +18,9 @@ let task_events ~latency_begin ~latency_end q =
         Queue.push q (`Created ((i :> int), !current_id, d, ts, v))
     | _ -> ()
   in
-  let two_ids_callback _d _ts c ((child : Ctf.id), (parent : Ctf.id)) =
+  let two_ids_callback _d ts c ((child : Ctf.id), (parent : Ctf.id)) =
     match Runtime_events.User.tag c with
-    | Ctf.Parent -> Queue.push q (`Parent ((child :> int), (parent :> int)))
+    | Ctf.Parent -> Queue.push q (`Parent ((child :> int), (parent :> int), ts))
     | _ -> ()
   in
   let unit_callback d ts c () =
@@ -180,7 +180,8 @@ let ui_loop ~q ~hist =
         | Some (`Switch (v, domain, ts)) ->
             State.switch_to ~id:(v :> int) ~domain ts
         | Some (`Suspend (domain, ts)) -> State.switch_to ~id:(-1) ~domain ts
-        | Some (`Parent (child, parent)) -> State.set_parent ~child ~parent
+        | Some (`Parent (child, parent, ts)) ->
+            State.set_parent ~child ~parent ts
         | Some (`Resolved (v, _, ts)) ->
             State.resolved (v : int) ts
             (* XXX: When to do this State.remove_task v ?  *)
@@ -194,7 +195,7 @@ let ui_loop ~q ~hist =
 
 let ui ~child_pid handle =
   Logs.set_reporter (Logging.reporter ());
-  Logs.set_level (Some Info);
+  Logs.set_level (Some Debug);
   let q = Queue.create () in
   let cursor = Runtime_events.create_cursor (Some handle) in
   let hist, latency_begin, latency_end = Latency.init () in

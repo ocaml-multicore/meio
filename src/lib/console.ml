@@ -71,14 +71,20 @@ let render_tree_line ~filtered depth is_active attr =
   let depth = List.rev depth in
   let l = List.length depth in
   List.mapi
-    (fun i { Task_tree.last; active } ->
-      match (i = l - 1, last, filtered) with
-      | true, false, false -> (" ├─ ", is_active)
-      | true, true, false -> (" └─ ", is_active)
-      | true, false, true -> (" ╞═ ", is_active)
-      | true, true, true -> (" ╘═ ", is_active)
-      | false, false, _ -> (" │ ", active)
-      | false, true, _ -> ("   ", false))
+    (fun i { Task_tree.last; active; cancellation_context } ->
+      match (i = l - 1, last, filtered, cancellation_context) with
+      | true, false, false, false -> ("► ", is_active)
+      | true, true, false, false -> ("► ", is_active)
+      | true, false, true, false -> ("▲ ", is_active)
+      | true, true, true, false -> ("▲ ", is_active)
+      | false, false, _, false -> ("┊ ", active)
+      | false, true, _, false -> ("  ", false)
+      | true, false, false, true -> (" ├─ ", is_active)
+      | true, true, false, true -> (" └─ ", is_active)
+      | true, false, true, true -> (" ╞═ ", is_active)
+      | true, true, true, true -> (" ╘═ ", is_active)
+      | false, false, _, true -> (" │ ", active)
+      | false, true, _, true -> ("   ", false))
     depth
   |> List.map (fun (s, is_active) -> W.string ~attr:(attr is_active) s)
   |> Ui.hcat
@@ -103,7 +109,7 @@ let render_task sort now ~depth ~filtered
   in
   let now = match status with Resolved v -> v | _ -> now in
   let domain = W.int ~attr domain in
-  let id = W.int ~attr id in
+  let id = W.fmt ~attr "%a" Task.Id.pp id in
   let total = Int64.sub now start in
   let color_busy =
     match status with

@@ -3,9 +3,9 @@ and 'a c = 'a tree list ref
 
 type t = {
   root : Task.t tree;
-  pending : (int, Task.t) Hashtbl.t;
-  by_id : (int, Task.t tree) Hashtbl.t;
-  mutable active_id : int;
+  pending : (Task.Id.eio, Task.t) Hashtbl.t;
+  by_id : (Task.Id.eio, Task.t tree) Hashtbl.t;
+  mutable active_id : Task.Id.eio;
 }
 
 let make () =
@@ -20,18 +20,33 @@ let make () =
     }
   in
   let root = { node; parent = ref []; children = ref [] } in
-  Hashtbl.add by_id (-1) root;
-  { root; by_id; active_id = -1; pending = Hashtbl.create 100 }
+  let eio_id = Task.Id.eio node.id in
+  Hashtbl.add by_id eio_id root;
+  { root; by_id; active_id = eio_id; pending = Hashtbl.create 100 }
 
 let node p task = { children = ref []; node = task; parent = p }
-let add t (task : Task.t) = Hashtbl.add t.pending task.id task
+
+let add t (task : Task.t) =
+  match task.kind with
+  | Eio.Private.Ctf.Cancellation_context _ -> (
+      match Hashtbl.find_opt t.by_id (Task.Id.eio_of_int task.parent_id) with
+      | None ->
+          Logs.warn (fun f ->
+              f "Couldn't find parent %d of %a" task.parent_id Task.Id.pp
+                task.id)
+      | Some p ->
+          let node = node p.children task in
+          Hashtbl.add t.by_id (Task.Id.eio task.id) node;
+          p.children := node :: !(p.children))
+  | _ -> Hashtbl.add t.pending (Task.Id.eio task.id) task
 
 let update t id fn =
   match Hashtbl.find_opt t.by_id id with
   | None -> (
       match Hashtbl.find_opt t.pending id with
-      | None -> Logs.warn (fun f -> f "Couldn't update fiber %d" id)
-      | Some v -> Hashtbl.replace t.pending v.id (fn v))
+      | None ->
+          Logs.warn (fun f -> f "Couldn't update fiber %a" Task.Id.pp_eio id)
+      | Some v -> Hashtbl.replace t.pending id (fn v))
   | Some v -> v.node <- fn v.node
 
 let update_active t ~id ts =
@@ -41,21 +56,28 @@ let update_active t ~id ts =
           let value = Int64.sub ts start in
           if value < 0L then
             Logs.err (fun f ->
-                f "Invalid timestamp for %d (%Ld)" t.active_id value)
+                f "Invalid timestamp for %a (%Ld)" Task.Id.pp_eio t.active_id
+                  value)
           else Task.Busy.add node.busy value;
           { node with status = Paused ts }
       | _ -> node);
   update t id (fun node -> { node with status = Active ts });
   t.active_id <- id
 
-let set_parent t ~child ~parent =
-  Logs.debug (fun f -> f "set parent %d -> %d" child parent);
+let is_cancellation_context task =
+  match task.Task.kind with
+  | Eio.Private.Ctf.Cancellation_context _ -> true
+  | _ -> false
+
+let set_parent t ~child ~parent ts =
+  Logs.debug (fun f ->
+      f "set parent %a -> %a" Task.Id.pp_eio child Task.Id.pp_eio parent);
   match Hashtbl.find_opt t.by_id parent with
   | None -> ()
   | Some parent -> (
       match Hashtbl.find_opt t.pending child with
       | Some child_task ->
-          Logs.debug (fun f -> f "new child %d" child);
+          Logs.debug (fun f -> f "new child %a" Task.Id.pp_eio child);
           let node = node parent.children child_task in
           parent.children := node :: !(parent.children);
           Hashtbl.remove t.pending child;
@@ -63,14 +85,41 @@ let set_parent t ~child ~parent =
       | None -> (
           match Hashtbl.find_opt t.by_id child with
           | None -> ()
-          | Some child ->
-              child.parent :=
-                List.filter
-                  (fun v -> v.node.Task.id <> child.node.id)
-                  !(child.parent);
-
-              parent.children := child :: !(parent.children);
-              child.parent <- parent.children))
+          | Some child when is_cancellation_context child.node ->
+              (* don't move cancellation contexts around *) ()
+          | Some child -> (
+              let parent_already_has_child =
+                List.find_opt
+                  (fun c ->
+                    Task.Id.eio c.node.Task.id = Task.Id.eio child.node.id)
+                  !(parent.children)
+              in
+              match parent_already_has_child with
+              | None ->
+                  (* child goes in a sub context. We fork the task.
+                   *)
+                  let new_child =
+                    {
+                      child.node with
+                      id = Task.Id.fork child.node.id;
+                      busy = Task.Busy.make ();
+                      name = child.node.name @ parent.node.name;
+                      loc = parent.node.loc;
+                      selected = ref false;
+                      display = ref Task.Auto;
+                    }
+                  in
+                  child.node <- { child.node with status = Paused ts };
+                  let new_child_node = node parent.children new_child in
+                  parent.children := new_child_node :: !(parent.children);
+                  new_child_node.parent <- parent.children;
+                  Hashtbl.replace t.by_id (Task.Id.eio new_child.id)
+                    new_child_node
+              | Some parent_child ->
+                  child.node <- { child.node with status = Resolved ts };
+                  Hashtbl.replace t.by_id
+                    (Task.Id.eio parent_child.node.Task.id)
+                    parent_child)))
 
 let rec fold_node (t : 'a tree) fn acc =
   List.fold_left (fun a b -> fold_node b fn a) (fn acc t.node) !(t.children)
@@ -93,7 +142,7 @@ let iter_with_prev t fn =
     None
   |> ignore
 
-type flatten_info = { last : bool; active : bool }
+type flatten_info = { last : bool; active : bool; cancellation_context : bool }
 
 let merge_status st1 st2 =
   match (st1, st2) with
@@ -145,20 +194,25 @@ let flatten t map =
 
     if filtered then Seq.return v
     else
-      let children = !(t.children) |> List.to_seq in
+      let children =
+        !(t.children)
+        |> List.sort (fun a b -> Sort.compare Busy a.node b.node)
+        |> List.to_seq
+      in
       let next =
         Seq.append
           (children |> Seq.drop 1 |> Seq.map Option.some)
           (Seq.return None)
       in
+      let cancellation_context = is_cancellation_context t.node in
       Seq.zip children next
       |> Seq.flat_map (fun (child, next) ->
              let depth =
                (match next with
-               | None -> { last = true; active = false }
+               | None -> { last = true; active = false; cancellation_context }
                | Some { node = { Task.status = Resolved _; _ }; _ } ->
-                   { last = false; active = false }
-               | _ -> { last = false; active = true })
+                   { last = false; active = false; cancellation_context }
+               | _ -> { last = false; active = true; cancellation_context })
                :: depth
              in
              map_loop ~depth child)

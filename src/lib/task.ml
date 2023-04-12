@@ -53,8 +53,36 @@ end
 
 type display = Auto | Yes | No | Toggle_requested
 
+module Id = struct
+  type t = { eio : int; counter : int; global_counter : int ref }
+
+  let make eio = { eio; counter = 0; global_counter = ref 0 }
+
+  let fork t =
+    incr t.global_counter;
+    { t with counter = !(t.global_counter) }
+
+  let pp fmt t =
+    if t.counter == 0 then Fmt.int fmt t.eio
+    else Fmt.pf fmt "%d.%d" t.eio t.counter
+
+  let compare a b =
+    match Int.compare a.eio b.eio with
+    | 0 -> Int.compare a.counter b.counter
+    | v -> v
+
+  type eio = int
+
+  let pp_eio = Fmt.int
+  let eio t = t.eio
+
+  let eio_of_int t =
+    assert (t >= -1);
+    t
+end
+
 type t = {
-  id : int;
+  id : Id.t;
   parent_id : int;
   domain : int;
   start : int64;
@@ -72,7 +100,7 @@ let is_active t = match t.status with Resolved _ -> false | _ -> true
 
 let create ~id ~domain ~parent_id start kind =
   {
-    id;
+    id = Id.make id;
     domain;
     parent_id;
     start;
@@ -115,6 +143,6 @@ let ui task =
   let title =
     W.fmt
       ~attr:Notty.A.(st bold ++ fg green)
-      "Task %i in domain %i busy stats" task.id task.domain
+      "Task %a in domain %i busy stats" Id.pp task.id task.domain
   in
   Ui.vcat (title :: stats :: percentiles)
