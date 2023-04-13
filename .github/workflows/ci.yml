@@ -39,9 +39,7 @@ jobs:
         run: |
           export PATH=${PATH}:`go env GOPATH`/bin
           export TERM=xterm-256color
-          export LINES=80
-          export COLUMNS=160
-          asciiscript .screencast/example.sh .screencast/example.cast --overwrite
+          LINES=80 COLUMNS=160 asciiscript .screencast/example.sh .screencast/example.cast --overwrite
 
       - uses: actions/upload-artifact@v3
         with:
