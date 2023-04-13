@@ -39,6 +39,7 @@ jobs:
         run: |
           export PATH=${PATH}:`go env GOPATH`/bin
           export TERM=xterm-256color
+          sudo sed -i 's/return os\.get_terminal_size()/return (160, 80)/' /usr/lib/python3/dist-packages/asciinema/term.py
           LINES=80 COLUMNS=160 asciiscript .screencast/example.sh .screencast/example.cast --overwrite
 
       - uses: actions/upload-artifact@v3
