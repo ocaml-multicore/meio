@@ -29,3 +29,16 @@ jobs:
 
       - name: Build
         run: opam exec -- dune build
+
+      - name: Update asciicast dependencies
+        run: |
+          go install github.com/christopher-dG/asciiscript@latest
+          sudo apt install asciinema
+
+      - name: Run asciicast
+        run: asciiscript .screencast/example.sh .screencast/example.cast --overwrite
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: asciicast
+          path: .screencast/example.cast
