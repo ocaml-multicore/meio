@@ -38,6 +38,9 @@ jobs:
       - name: Run asciicast
         run: |
           export PATH=${PATH}:`go env GOPATH`/bin
+          export TERM=dumb
+          export LINES=50
+          export COLS=80
           asciiscript .screencast/example.sh .screencast/example.cast --overwrite
 
       - uses: actions/upload-artifact@v3
