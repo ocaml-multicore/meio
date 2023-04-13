@@ -195,7 +195,7 @@ let ui_loop ~q ~hist =
 
 let ui ~child_pid handle =
   Logs.set_reporter (Logging.reporter ());
-  Logs.set_level (Some Debug);
+  Logs.set_level (Some Info);
   let q = Queue.create () in
   let cursor = Runtime_events.create_cursor (Some handle) in
   let hist, latency_begin, latency_end = Latency.init () in
