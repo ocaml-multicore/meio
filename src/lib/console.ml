@@ -223,7 +223,7 @@ let root sort =
         let line =
           let _, _, _, t = ui in
           Ui.mouse_area
-            (fun ~x ~y btn ->
+            (fun ~x:_ ~y:_ btn ->
               match btn with
               | `Left ->
                   if !(t.Task.selected) then
