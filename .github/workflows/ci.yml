@@ -36,7 +36,9 @@ jobs:
           sudo apt install asciinema
 
       - name: Run asciicast
-        run: asciiscript .screencast/example.sh .screencast/example.cast --overwrite
+        run: |
+          export PATH=${PATH}:`go env GOPATH`/bin
+          asciiscript .screencast/example.sh .screencast/example.cast --overwrite
 
       - uses: actions/upload-artifact@v3
         with:
