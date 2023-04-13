@@ -39,8 +39,8 @@ jobs:
         run: |
           export PATH=${PATH}:`go env GOPATH`/bin
           export TERM=screen-256color
-          export LINES=50
-          export COLS=80
+          export LINES=80
+          export COLS=160
           asciiscript .screencast/example.sh .screencast/example.cast --overwrite
 
       - uses: actions/upload-artifact@v3
