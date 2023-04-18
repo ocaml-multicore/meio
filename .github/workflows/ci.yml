@@ -36,7 +36,7 @@ jobs:
       - name: Update asciicast dependencies
         run: |
           go install github.com/christopher-dG/asciiscript@latest
-          sudo apt install asciinema
+          sudo apt install asciinema fonts-firacode
 
       - name: Run asciicast and convert to GIF
         run: |
@@ -47,7 +47,7 @@ jobs:
           wget https://github.com/asciinema/agg/releases/download/v1.4.1/agg-x86_64-unknown-linux-gnu -O agg
           echo "3c933591d396d22355a37ff40b4259c8b1e2de8f896cf8c7dec1fab72e5f527e agg" | sha256sum --check
           chmod +x agg
-          ./agg .screencast/example.cast .screencast/example.gif
+          ./agg .screencast/example.cast .screencast/example.gif --font-family "Fira Code" --font-size=18
 
       - uses: actions/upload-artifact@v3
         with:
