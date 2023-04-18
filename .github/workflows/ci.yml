@@ -25,7 +25,9 @@ jobs:
             custom-events: https://github.com/TheLortex/custom-events-opam-repository.git
 
       - name: Meio Deps 🐈‍⬛
-        run: opam pin . -yn && opam install . --deps-only --with-test
+        run: |
+          opam pin -yn https://github.com/TheLortex/notty/tree/override-lines-cols.git
+          opam pin . -yn && opam install . --deps-only --with-test
 
       - name: Build
         run: opam exec -- dune build
@@ -36,11 +38,11 @@ jobs:
           sudo apt install asciinema
 
       - name: Run asciicast
-        shell: 'script --return --quiet --command "bash {0}"'
         run: |
           export PATH=${PATH}:`go env GOPATH`/bin
           export TERM=xterm-256color
-          COLUMNS=160 LINES=40 stty rows 40 cols 160 && asciiscript .screencast/example.sh .screencast/example.cast --overwrite
+          sudo sed -i 's/return os\.get_terminal_size()/return (160, 40)/' /usr/lib/python3/dist-packages/asciinema/term.py
+          NOTTY_LINES=40 NOTTY_COLUMNS=160 asciiscript .screencast/example.sh .screencast/example.cast --overwrite
 
       - uses: actions/upload-artifact@v3
         with:
