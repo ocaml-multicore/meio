@@ -23,11 +23,12 @@ jobs:
           opam-repositories: |
             default: https://github.com/ocaml/opam-repository.git
             custom-events: https://github.com/TheLortex/custom-events-opam-repository.git
+          dune-cache: true
 
       - name: Meio Deps 🐈‍⬛
         run: |
           opam pin -yn git+https://github.com/TheLortex/notty.git#override-lines-cols
-          opam pin . -yn && opam install . --deps-only --with-test
+          opam install . --deps-only --with-test
 
       - name: Build
         run: opam exec -- dune build
