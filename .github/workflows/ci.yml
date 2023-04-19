@@ -35,7 +35,7 @@ jobs:
 
       - name: Update asciicast dependencies
         run: |
-          go install github.com/christopher-dG/asciiscript@latest
+          go install github.com/TheLortex/asciiscript@latest
           sudo apt install asciinema fonts-firacode
 
       - name: Run asciicast and convert to GIF

@@ -119,10 +119,12 @@ let ui_loop ~q ~hist =
         Nottui.Ui.event_filter
           (fun ev ->
             match (ev, Lwd.sample release_queue task_list) with
-            | `Key (`Arrow `Down, _), Some (_, pos, bot, tasks) ->
+            | ( (`Key (`Arrow `Down, _) | `Key (`ASCII 'j', _)),
+                Some (_, pos, bot, tasks) ) ->
                 Console.set_selected tasks `Next;
                 if pos = bot - 1 then `Unhandled else `Handled
-            | `Key (`Arrow `Up, _), Some (top, pos, _, tasks) ->
+            | ( (`Key (`Arrow `Up, _) | `Key (`ASCII 'k', _)),
+                Some (top, pos, _, tasks) ) ->
                 Console.set_selected tasks `Prev;
                 if pos = top + 1 then `Unhandled else `Handled
             | `Key (`ASCII 'h', _), _ ->
