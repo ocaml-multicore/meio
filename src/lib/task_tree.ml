@@ -6,6 +6,7 @@ type t = {
   pending : (Task.Id.eio, Task.t) Hashtbl.t;
   by_id : (Task.Id.eio, Task.t tree) Hashtbl.t;
   mutable active_id : Task.Id.eio;
+  mutable waiters : Task.t option Lwd.prim list;
 }
 
 let make () =
@@ -22,9 +23,16 @@ let make () =
   let root = { node; parent = ref []; children = ref [] } in
   let eio_id = Task.Id.eio node.id in
   Hashtbl.add by_id eio_id root;
-  { root; by_id; active_id = eio_id; pending = Hashtbl.create 100 }
+  {
+    root;
+    by_id;
+    active_id = eio_id;
+    pending = Hashtbl.create 100;
+    waiters = [];
+  }
 
 let node p task = { children = ref []; node = task; parent = p }
+let invalidate t = List.iter Lwd.invalidate t.waiters
 
 let add t (task : Task.t) =
   match task.kind with
@@ -37,8 +45,11 @@ let add t (task : Task.t) =
       | Some p ->
           let node = node p.children task in
           Hashtbl.add t.by_id (Task.Id.eio task.id) node;
-          p.children := node :: !(p.children))
-  | _ -> Hashtbl.add t.pending (Task.Id.eio task.id) task
+          p.children := node :: !(p.children);
+          invalidate t)
+  | _ ->
+      Hashtbl.add t.pending (Task.Id.eio task.id) task;
+      invalidate t
 
 let update t id fn =
   match Hashtbl.find_opt t.by_id id with
@@ -46,8 +57,12 @@ let update t id fn =
       match Hashtbl.find_opt t.pending id with
       | None ->
           Logs.warn (fun f -> f "Couldn't update fiber %a" Task.Id.pp_eio id)
-      | Some v -> Hashtbl.replace t.pending id (fn v))
-  | Some v -> v.node <- fn v.node
+      | Some v ->
+          Hashtbl.replace t.pending id (fn v);
+          invalidate t)
+  | Some v ->
+      v.node <- fn v.node;
+      invalidate t
 
 let update_active t ~id ts =
   update t t.active_id (fun node ->
@@ -62,7 +77,8 @@ let update_active t ~id ts =
           { node with status = Paused ts }
       | _ -> node);
   update t id (fun node -> { node with status = Active ts });
-  t.active_id <- id
+  t.active_id <- id;
+  invalidate t
 
 let is_cancellation_context task =
   match task.Task.kind with
@@ -81,7 +97,8 @@ let set_parent t ~child ~parent ts =
           let node = node parent.children child_task in
           parent.children := node :: !(parent.children);
           Hashtbl.remove t.pending child;
-          Hashtbl.add t.by_id child node
+          Hashtbl.add t.by_id child node;
+          invalidate t
       | None -> (
           match Hashtbl.find_opt t.by_id child with
           | None -> ()
@@ -114,12 +131,14 @@ let set_parent t ~child ~parent ts =
                   parent.children := new_child_node :: !(parent.children);
                   new_child_node.parent <- parent.children;
                   Hashtbl.replace t.by_id (Task.Id.eio new_child.id)
-                    new_child_node
+                    new_child_node;
+                  invalidate t
               | Some parent_child ->
                   child.node <- { child.node with status = Resolved ts };
                   Hashtbl.replace t.by_id
                     (Task.Id.eio parent_child.node.Task.id)
-                    parent_child)))
+                    parent_child;
+                  invalidate t)))
 
 let rec fold_node (t : 'a tree) fn acc =
   List.fold_left (fun a b -> fold_node b fn a) (fn acc t.node) !(t.children)
@@ -225,3 +244,12 @@ let find_first t fn =
     if fn t.node then Some t.node else List.find_map loop !(t.children)
   in
   loop t.root
+
+let find_first_lwd t fn =
+  Lwd.prim
+    ~acquire:(fun prim ->
+      t.waiters <- prim :: t.waiters;
+      find_first t fn)
+    ~release:(fun prim _ ->
+      t.waiters <- List.filter (fun x -> x != prim) t.waiters)
+  |> Lwd.get_prim

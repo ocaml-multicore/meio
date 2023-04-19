@@ -15,3 +15,5 @@ val flatten :
   t -> (depth:flatten_info list -> filtered:bool -> Task.t -> 'a) -> 'a Seq.t
 
 val find_first : t -> (Task.t -> bool) -> Task.t option
+val find_first_lwd : t -> (Task.t -> bool) -> Task.t option Lwd.t
+val invalidate : t -> unit

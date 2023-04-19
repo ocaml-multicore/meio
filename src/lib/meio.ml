@@ -52,17 +52,31 @@ let task_events ~latency_begin ~latency_end q =
   |> add_callback Ctf.two_ids_type two_ids_callback
 
 let get_selected () =
-  Task_tree.find_first State.tasks (fun v -> !(v.Task.selected)) |> Option.get
+  Task_tree.find_first_lwd State.tasks (fun v -> !(v.Task.selected))
+  |> Lwd.map ~f:Option.get
 
 let screens duration hist sort =
   [
-    (`Help, fun () -> (Lwd.return Help.help, Lwd.return None));
+    ( `Help,
+      fun () ->
+        (Lwd.return (Help.help |> Nottui.Ui.resize ~h:0 ~sh:1), Lwd.return None)
+    );
     (`Main, fun () -> Console.root sort);
     ( `Task,
       fun () ->
-        ( Nottui_widgets.scroll_area @@ Lwd.return @@ Task.ui @@ get_selected (),
+        ( get_selected ()
+          |> Lwd.map ~f:(fun w -> Task.ui w |> Nottui.Ui.resize ~h:0 ~sh:1),
           Lwd.return None ) );
-    (`Gc, fun () -> (Latency.ui hist duration, Lwd.return None));
+    ( `Gc,
+      fun () ->
+        ( Latency.ui hist duration |> Lwd.map ~f:(Nottui.Ui.resize ~h:0 ~sh:1),
+          Lwd.return None ) );
+    ( `Logs,
+      fun () ->
+        ( Lwd_table.map_reduce
+            (fun _ line -> Notty.I.string Notty.A.empty line |> Nottui.Ui.atom)
+            Nottui.Ui.pack_y Logging.table,
+          Lwd.return None ) );
   ]
 
 let min_thresh = 1e-6
@@ -94,22 +108,17 @@ let ui_loop ~q ~hist =
   let screen = Lwd.var `Main in
   let sort = Lwd.var Sort.Tree in
   let duration = Lwd.var 0L in
-  let show_logs = Lwd.var true in
   let screens = screens duration hist (Lwd.get sort) in
-  let ui =
-    Lwd.bind
-      ~f:(fun screen ->
-        let a, b = (List.assoc screen screens) () in
-        Lwd.pair a b)
-      (Lwd.get screen)
-  in
   let quit = Lwd.var false in
+  let main, task_list = List.assoc `Main screens () in
+  let task_list = Lwd.observe task_list in
+  let release_queue = Lwd.make_release_queue () in
   let ui =
     Lwd.map2
-      ~f:(fun (ui, selected_position) s ->
+      ~f:(fun ui s ->
         Nottui.Ui.event_filter
           (fun ev ->
-            match (ev, selected_position) with
+            match (ev, Lwd.sample release_queue task_list) with
             | `Key (`Arrow `Down, _), Some (_, pos, bot, tasks) ->
                 Console.set_selected tasks `Next;
                 if pos = bot - 1 then `Unhandled else `Handled
@@ -132,7 +141,7 @@ let ui_loop ~q ~hist =
                 Lwd.set quit true;
                 `Handled
             | `Key (`ASCII 'l', _), _ ->
-                Lwd.set show_logs (Lwd.peek show_logs |> not);
+                Lwd.set screen `Logs;
                 `Handled
             | `Key (`ASCII 's', _), _ ->
                 let s = Sort.next (Lwd.peek sort) in
@@ -146,17 +155,15 @@ let ui_loop ~q ~hist =
                 `Handled
             | _ -> `Unhandled)
           ui)
-      ui (Lwd.get screen)
-  in
-  let logs =
-    Lwd_table.map_reduce
-      (fun _ line -> Notty.I.string Notty.A.empty line |> Nottui.Ui.atom)
-      Nottui.Ui.pack_y Logging.table
+      main (Lwd.get screen)
   in
   let ui =
     let open Lwd_infix in
-    let$* show_logs = Lwd.get show_logs in
-    if show_logs then Nottui_widgets.v_pane ui logs else ui
+    let$* screen = Lwd.get screen in
+    if screen <> `Main then
+      let pane, _ = (List.assoc screen screens) () in
+      Nottui_widgets.v_pane ui pane
+    else ui
   in
 
   let ui =
@@ -191,7 +198,8 @@ let ui_loop ~q ~hist =
         | Some (`Terminated status) ->
             State.terminated status (Timestamp.current ())
       done)
-    ~tick_period:0.05 ui
+    ~tick_period:0.05 ui;
+  Lwd.release release_queue task_list
 
 let ui ~child_pid handle =
   Logs.set_reporter (Logging.reporter ());

@@ -24,6 +24,8 @@ let toggle_fold t fn =
 let toggle_fold_selected t = toggle_fold t (fun c -> !(c.Task.selected))
 
 let set_selected tasks action =
+  (* Todo: this shouldn't be manual.. *)
+  Task_tree.invalidate State.tasks;
   match action with
   | `Next ->
       let rec loop = function
@@ -94,15 +96,6 @@ let render_tree_line ~filtered depth is_active attr =
   |> List.map (fun (s, is_active) -> W.string ~attr:(attr is_active) s)
   |> Ui.hcat
 
-let cancellation_context_purpose_to_string = function
-  | Eio.Private.Ctf.Choose -> "choose"
-  | Pick -> "pick"
-  | Join -> "join"
-  | Switch -> "switch"
-  | Protect -> "protect"
-  | Sub -> "sub"
-  | Root -> "root"
-
 let render_task sort now ~depth ~filtered
     ({ Task.id; domain; start; loc; name; busy; selected; status; kind; _ } as
     t) =
@@ -154,9 +147,7 @@ let render_task sort now ~depth ~filtered
   let kind =
     W.string ~attr
       (match kind with
-      | Cancellation_context { protected; purpose } ->
-          Fmt.str "cc {%b, %s}" protected
-            (cancellation_context_purpose_to_string purpose)
+      | Cancellation_context _ -> "cc"
       | Task -> "task"
       | _ -> "??")
   in
