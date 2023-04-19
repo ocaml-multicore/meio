@@ -121,28 +121,38 @@ let make_histogram task = Busy.hist task.busy
 let ns_span i = Fmt.(to_to_string uint64_ns_span (Int64.of_int i))
 
 let ui task =
-  let h = make_histogram task in
-  let percentiles =
-    let percentiles =
-      List.map (fun p -> (p, H.value_at_percentile h p)) percentiles
-    in
-    List.map (fun (p, i) -> W.fmt "%.2f%% %s" p (ns_span i)) percentiles
-  in
-  let stats =
-    Ui.hcat
-      [
+  match task.kind with
+  | Cancellation_context _ ->
+      W.fmt
+        ~attr:Notty.A.(st bold ++ fg green)
+        "Cancellation context %a in domain %i" Id.pp task.id task.domain
+  | _ ->
+      let h = make_histogram task in
+      let percentiles =
+        let percentiles =
+          List.map (fun p -> (p, H.value_at_percentile h p)) percentiles
+        in
+        List.map (fun (p, i) -> W.fmt "%.2f%% %s" p (ns_span i)) percentiles
+      in
+      let stats =
+        Ui.hcat
+          [
+            W.fmt
+              ~attr:Notty.A.(st italic)
+              "max: %s, min: %s, std: %s, mean: %s"
+              (ns_span @@ H.max h)
+              (ns_span @@ H.min h)
+              (ns_span @@ int_of_float @@ H.stddev h)
+              (ns_span @@ int_of_float @@ H.mean h);
+          ]
+      in
+      let title =
         W.fmt
-          ~attr:Notty.A.(st italic)
-          "max: %s, min: %s, std: %s, mean: %s"
-          (ns_span @@ H.max h)
-          (ns_span @@ H.min h)
-          (ns_span @@ int_of_float @@ H.stddev h)
-          (ns_span @@ int_of_float @@ H.mean h);
-      ]
-  in
-  let title =
-    W.fmt
-      ~attr:Notty.A.(st bold ++ fg green)
-      "Task %a in domain %i busy stats" Id.pp task.id task.domain
-  in
-  Ui.vcat (title :: stats :: percentiles)
+          ~attr:Notty.A.(st bold ++ fg green)
+          "Task %a in domain %i busy stats" Id.pp task.id task.domain
+      in
+      let logs =
+        W.string ~attr:Notty.A.(st bold ++ fg red) "LOGS"
+        :: List.map W.string task.logs
+      in
+      Ui.hcat [ Ui.vcat (title :: stats :: percentiles); Ui.vcat logs ]

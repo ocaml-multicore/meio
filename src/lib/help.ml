@@ -22,9 +22,9 @@ let footer sort screen =
       space;
       key_help ~attr:(attr `Task) 'e' "Fiber info";
       space;
-      key_help 's' ("Sort " ^ Sort.to_string sort);
+      key_help ~attr:(attr `Logs) 'l' ("Logs");
       space;
-      key_help 'l' ("Toggle logs pane");
+      key_help 's' ("Sort " ^ Sort.to_string sort);
       space;
       key_help 'q' "Quit";
     ]
