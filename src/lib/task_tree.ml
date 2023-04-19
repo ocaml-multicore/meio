@@ -215,7 +215,7 @@ let flatten t map =
     else
       let children =
         !(t.children)
-        |> List.sort (fun a b -> Sort.compare Busy a.node b.node)
+        |> List.sort (fun a b -> Sort.compare Id a.node b.node)
         |> List.to_seq
       in
       let next =
