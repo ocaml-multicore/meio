@@ -16,13 +16,12 @@ jobs:
         with:
           submodules: true
 
-      - name: Use OCaml 5.0.0+custom-events
+      - name: Use OCaml 5.1.0
         uses: ocaml/setup-ocaml@v2
         with:
-          ocaml-compiler: ocaml-variants.5.0.0+custom-events
+          ocaml-compiler: ocaml-base-compiler.5.1.0
           opam-repositories: |
             default: https://github.com/ocaml/opam-repository.git
-            custom-events: https://github.com/TheLortex/custom-events-opam-repository.git
           dune-cache: true
 
       - name: Meio Deps 🐈‍⬛
@@ -31,7 +30,7 @@ jobs:
           opam install . --deps-only --with-test
 
       - name: Build
-        run: opam exec -- dune build
+        run: opam exec -- dune build @all
 
       - name: Update asciicast dependencies
         run: |

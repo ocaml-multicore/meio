@@ -40,5 +40,6 @@ pin-depends: [
   # Rebased version of https://github.com/TheLortex/eio/tree/runtime-events
   ["eio.dev" "git+https://github.com/tmcgilchrist/eio#48fa41f1c6d915fc39848a406aed8c8a49cc25ba"]
   ["eio_main.dev" "git+https://github.com/tmcgilchrist/eio#48fa41f1c6d915fc39848a406aed8c8a49cc25ba"]
+  ["eio_linux.dev" "git+https://github.com/tmcgilchrist/eio#48fa41f1c6d915fc39848a406aed8c8a49cc25ba"]
   ["eio_posix.dev" "git+https://github.com/tmcgilchrist/eio#48fa41f1c6d915fc39848a406aed8c8a49cc25ba"]
 ]
