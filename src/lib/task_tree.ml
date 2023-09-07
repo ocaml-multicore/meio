@@ -3,9 +3,9 @@ and 'a c = 'a tree list ref
 
 type t = {
   root : Task.t tree;
-  pending : (Task.Id.eio, Task.t) Hashtbl.t;
-  by_id : (Task.Id.eio, Task.t tree) Hashtbl.t;
-  mutable active_id : Task.Id.eio;
+  pending : (Task.Id.extern, Task.t) Hashtbl.t;
+  by_id : (Task.Id.extern, Task.t tree) Hashtbl.t;
+  mutable active_id : Task.Id.extern;
   mutable waiters : Task.t option Lwd.prim list;
 }
 
@@ -21,34 +21,33 @@ let make () =
     }
   in
   let root = { node; parent = ref []; children = ref [] } in
-  let eio_id = Task.Id.eio node.id in
-  Hashtbl.add by_id eio_id root;
-  {
-    root;
-    by_id;
-    active_id = eio_id;
-    pending = Hashtbl.create 100;
-    waiters = [];
-  }
+  let e_id = Task.Id.to_extern node.id in
+  Hashtbl.add by_id e_id root;
+  { root; by_id; active_id = e_id; pending = Hashtbl.create 100; waiters = [] }
 
 let node p task = { children = ref []; node = task; parent = p }
 let invalidate t = List.iter Lwd.invalidate t.waiters
 
 let add t (task : Task.t) =
   match task.kind with
-  | Eio.Private.Ctf.Cancellation_context _ -> (
-      match Hashtbl.find_opt t.by_id (Task.Id.eio_of_int task.parent_id) with
+  | Meio_runtime_events.Cancellation_context _ | Meio_runtime_events.Task -> (
+      match Hashtbl.find_opt t.by_id (Task.Id.extern_of_int task.parent_id) with
       | None ->
           Logs.warn (fun f ->
               f "Couldn't find parent %d of %a" task.parent_id Task.Id.pp
                 task.id)
       | Some p ->
+          Logs.info (fun f ->
+              f "Adding parent %a with %a" Task.Id.pp p.node.id Task.Id.pp
+                task.id);
           let node = node p.children task in
-          Hashtbl.add t.by_id (Task.Id.eio task.id) node;
+          Hashtbl.add t.by_id (Task.Id.to_extern task.id) node;
           p.children := node :: !(p.children);
           invalidate t)
   | _ ->
-      Hashtbl.add t.pending (Task.Id.eio task.id) task;
+      Logs.info (fun f ->
+          f "Adding %a" Task.Id.pp_extern (Task.Id.to_extern task.id));
+      Hashtbl.add t.pending (Task.Id.to_extern task.id) task;
       invalidate t
 
 let update t id fn =
@@ -56,7 +55,7 @@ let update t id fn =
   | None -> (
       match Hashtbl.find_opt t.pending id with
       | None ->
-          Logs.warn (fun f -> f "Couldn't update fiber %a" Task.Id.pp_eio id)
+          Logs.warn (fun f -> f "Couldn't update fiber %a" Task.Id.pp_extern id)
       | Some v ->
           Hashtbl.replace t.pending id (fn v);
           invalidate t)
@@ -71,7 +70,7 @@ let update_active t ~id ts =
           let value = Int64.sub ts start in
           if value < 0L then
             Logs.err (fun f ->
-                f "Invalid timestamp for %a (%Ld)" Task.Id.pp_eio t.active_id
+                f "Invalid timestamp for %a (%Ld)" Task.Id.pp_extern t.active_id
                   value)
           else Task.Busy.add node.busy value;
           { node with status = Paused ts }
@@ -82,18 +81,18 @@ let update_active t ~id ts =
 
 let is_cancellation_context task =
   match task.Task.kind with
-  | Eio.Private.Ctf.Cancellation_context _ -> true
+  | Meio_runtime_events.Cancellation_context _ -> true
   | _ -> false
 
 let set_parent t ~child ~parent ts =
   Logs.debug (fun f ->
-      f "set parent %a -> %a" Task.Id.pp_eio child Task.Id.pp_eio parent);
+      f "set parent %a -> %a" Task.Id.pp_extern child Task.Id.pp_extern parent);
   match Hashtbl.find_opt t.by_id parent with
   | None -> ()
   | Some parent -> (
       match Hashtbl.find_opt t.pending child with
       | Some child_task ->
-          Logs.debug (fun f -> f "new child %a" Task.Id.pp_eio child);
+          Logs.debug (fun f -> f "new child %a" Task.Id.pp_extern child);
           let node = node parent.children child_task in
           parent.children := node :: !(parent.children);
           Hashtbl.remove t.pending child;
@@ -108,7 +107,8 @@ let set_parent t ~child ~parent ts =
               let parent_already_has_child =
                 List.find_opt
                   (fun c ->
-                    Task.Id.eio c.node.Task.id = Task.Id.eio child.node.id)
+                    Task.Id.to_extern c.node.Task.id
+                    = Task.Id.to_extern child.node.id)
                   !(parent.children)
               in
               match parent_already_has_child with
@@ -130,13 +130,14 @@ let set_parent t ~child ~parent ts =
                   let new_child_node = node parent.children new_child in
                   parent.children := new_child_node :: !(parent.children);
                   new_child_node.parent <- parent.children;
-                  Hashtbl.replace t.by_id (Task.Id.eio new_child.id)
+                  Hashtbl.replace t.by_id
+                    (Task.Id.to_extern new_child.id)
                     new_child_node;
                   invalidate t
               | Some parent_child ->
                   child.node <- { child.node with status = Resolved ts };
                   Hashtbl.replace t.by_id
-                    (Task.Id.eio parent_child.node.Task.id)
+                    (Task.Id.to_extern parent_child.node.Task.id)
                     parent_child;
                   invalidate t)))
 

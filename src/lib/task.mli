@@ -17,14 +17,14 @@ type display = Auto | Yes | No | Toggle_requested
 
 module Id : sig
   type t
-  type eio
+  type extern
 
   val pp : t Fmt.t
   val compare : t -> t -> int
   val fork : t -> t
-  val eio : t -> eio
-  val pp_eio : eio Fmt.t
-  val eio_of_int : int -> eio
+  val to_extern : t -> extern
+  val pp_extern : extern Fmt.t
+  val extern_of_int : int -> extern
 end
 
 type t = {
@@ -37,7 +37,7 @@ type t = {
   loc : string list;
   logs : string list;
   status : status;
-  kind : Eio.Private.Ctf.event;
+  kind : Meio_runtime_events.event;
   selected : bool ref;
   display : display ref;
 }
@@ -45,6 +45,11 @@ type t = {
 val is_active : t -> bool
 
 val create :
-  id:int -> domain:int -> parent_id:int -> int64 -> Eio.Private.Ctf.event -> t
+  id:int ->
+  domain:int ->
+  parent_id:int ->
+  int64 ->
+  Meio_runtime_events.event ->
+  t
 
 val ui : t -> Nottui.ui

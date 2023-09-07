@@ -1,4 +1,5 @@
 (executable
  (name meio)
  (public_name meio)
+ (package meio)
  (libraries meio))

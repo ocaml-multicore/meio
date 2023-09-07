@@ -54,29 +54,29 @@ end
 type display = Auto | Yes | No | Toggle_requested
 
 module Id = struct
-  type t = { eio : int; counter : int; global_counter : int ref }
+  type t = { extern : int; counter : int; global_counter : int ref }
 
-  let make eio = { eio; counter = 0; global_counter = ref 0 }
+  let make extern = { extern; counter = 0; global_counter = ref 0 }
 
   let fork t =
     incr t.global_counter;
     { t with counter = !(t.global_counter) }
 
   let pp fmt t =
-    if t.counter == 0 then Fmt.int fmt t.eio
-    else Fmt.pf fmt "%d.%d" t.eio t.counter
+    if t.counter == 0 then Fmt.int fmt t.extern
+    else Fmt.pf fmt "%d.%d" t.extern t.counter
 
   let compare a b =
-    match Int.compare a.eio b.eio with
+    match Int.compare a.extern b.extern with
     | 0 -> Int.compare a.counter b.counter
     | v -> v
 
-  type eio = int
+  type extern = int
 
-  let pp_eio = Fmt.int
-  let eio t = t.eio
+  let pp_extern = Fmt.int
+  let to_extern t = t.extern
 
-  let eio_of_int t =
+  let extern_of_int t =
     assert (t >= -1);
     t
 end
@@ -91,7 +91,7 @@ type t = {
   loc : string list;
   logs : string list;
   status : status;
-  kind : Eio.Private.Ctf.event;
+  kind : Meio_runtime_events.event;
   selected : bool ref;
   display : display ref;
 }

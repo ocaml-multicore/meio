@@ -147,7 +147,7 @@ let render_task sort now ~depth ~filtered
   let kind =
     W.string ~attr
       (match kind with
-      | Cancellation_context _ -> "cc"
+      | Meio_runtime_events.Cancellation_context _ -> "cc"
       | Task -> "task"
       | _ -> "??")
   in
