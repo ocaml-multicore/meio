@@ -1,0 +1,6 @@
+(library
+ (name meio_runtime_events)
+ (public_name meio-runtime-events)
+ (libraries astring fmt runtime_events)
+ (enabled_if
+  (>= %{ocaml_version} 5.1.0)))

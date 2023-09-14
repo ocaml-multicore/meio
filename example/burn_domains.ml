@@ -42,7 +42,7 @@ let main dom_mgr clock =
 
 let () =
   Eio_main.run @@ fun env ->
-  Ctf.with_tracing @@ fun () ->
+  Tracing.with_tracing @@ fun () ->
   let clock = Stdenv.clock env in
   let dom_mgr = Stdenv.domain_mgr env in
   main dom_mgr clock

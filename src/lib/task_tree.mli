@@ -2,9 +2,12 @@ type t
 
 val make : unit -> t
 val add : t -> Task.t -> unit
-val update : t -> Task.Id.eio -> (Task.t -> Task.t) -> unit
-val update_active : t -> id:Task.Id.eio -> int64 -> unit
-val set_parent : t -> child:Task.Id.eio -> parent:Task.Id.eio -> int64 -> unit
+val update : t -> Task.Id.extern -> (Task.t -> Task.t) -> unit
+val update_active : t -> id:Task.Id.extern -> int64 -> unit
+
+val set_parent :
+  t -> child:Task.Id.extern -> parent:Task.Id.extern -> int64 -> unit
+
 val iter : t -> (Task.t -> unit) -> unit
 val iter_mut : t -> (Task.t -> Task.t) -> unit
 val iter_with_prev : t -> (prev:Task.t option -> Task.t -> unit) -> unit

@@ -9,15 +9,8 @@ license: "MIT"
 homepage: "https://github.com/patricoferris/eio-console"
 bug-reports: "https://github.com/patricoferris/eio-console/issues"
 depends: [
-  "ocaml"             {>= "5.1.0"}
-  "dune"              {>= "2.9"}
-  "astring"
-  "ptime"
-  "nottui"
-  "cmdliner"
-  "hdr_histogram"
-  "eio_main"          {with-test}
-  "odoc"              {with-doc}
+  "dune" {>= "2.9"}
+  "odoc" {with-doc}
 ]
 build: [
   ["dune" "subst"] {dev}
@@ -36,7 +29,3 @@ build: [
   ["dune" "install" "-p" name "--create-install-files" name]
 ]
 dev-repo: "git+https://github.com/patricoferris/eio-console.git"
-pin-depends:[
-  [ "eio.dev" "git+https://github.com/patricoferris/eio#dbd52c66a6e463720b48cb835d01f0e5c7c0b170"]
-  [ "eio_main.dev" "git+https://github.com/patricoferris/eio#dbd52c66a6e463720b48cb835d01f0e5c7c0b170" ]
-]

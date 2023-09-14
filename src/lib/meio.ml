@@ -1,10 +1,10 @@
-module Ctf = Eio.Private.Ctf
+module Ctf = Meio_runtime_events
 
 let add_callback = Runtime_events.Callbacks.add_user_event
 
 let task_events ~latency_begin ~latency_end q =
   let current_id = ref (-1) in
-  let module Queue = Eio_utils.Lf_queue in
+  let module Queue = Lf_queue in
   let evs =
     Runtime_events.Callbacks.create ~runtime_begin:latency_begin
       ~runtime_end:latency_end
@@ -14,7 +14,9 @@ let task_events ~latency_begin ~latency_end q =
   in
   let id_event_callback d ts c ((i : Ctf.id), v) =
     match (Runtime_events.User.tag c, v) with
-    | Ctf.Created, (Ctf.Task | Ctf.Cancellation_context _) ->
+    | ( Meio_runtime_events.Created,
+        (Meio_runtime_events.Task | Meio_runtime_events.Cancellation_context _)
+      ) ->
         Queue.push q (`Created ((i :> int), !current_id, d, ts, v))
     | _ -> ()
   in
@@ -82,7 +84,7 @@ let screens duration hist sort =
 let min_thresh = 1e-6
 let sleepf f = if f > min_thresh then Unix.sleepf f
 
-module Queue = Eio_utils.Lf_queue
+module Queue = Lf_queue
 
 let runtime_event_loop ~child_pid ~q ~stop ~cursor ~callbacks =
   let max_sleep = 0.01 in

@@ -1,4 +1,4 @@
-module Queue = Eio_utils.Lf_queue
+module Queue = Lf_queue
 
 let table = Lwd_table.make ()
 let waiting = Queue.create ()
