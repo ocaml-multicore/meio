@@ -9,15 +9,14 @@ license: "MIT"
 homepage: "https://github.com/patricoferris/eio-console"
 bug-reports: "https://github.com/patricoferris/eio-console/issues"
 depends: [
-  "dune" {>= "2.9"}
-  "eio_main"
-  "eio" {= "0.8.1+custom-events.2"} # available in https://github.com/TheLortex/custom-events-opam-repository
+  "ocaml"             {>= "5.1.0"}
+  "dune"              {>= "2.9"}
   "astring"
   "ptime"
   "nottui"
   "cmdliner"
   "hdr_histogram"
-  "odoc" {with-doc}
+  "odoc"              {with-doc}
 ]
 build: [
   ["dune" "subst"] {dev}
