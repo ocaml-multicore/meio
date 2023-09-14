@@ -16,6 +16,7 @@ depends: [
   "nottui"
   "cmdliner"
   "hdr_histogram"
+  "eio_main"          {with-test}
   "odoc"              {with-doc}
 ]
 build: [
@@ -35,3 +36,7 @@ build: [
   ["dune" "install" "-p" name "--create-install-files" name]
 ]
 dev-repo: "git+https://github.com/patricoferris/eio-console.git"
+pin-depends:[
+  [ "eio.dev" "git+https://github.com/patricoferris/eio#dbd52c66a6e463720b48cb835d01f0e5c7c0b170"]
+  [ "eio_main.dev" "git+https://github.com/patricoferris/eio#dbd52c66a6e463720b48cb835d01f0e5c7c0b170" ]
+]

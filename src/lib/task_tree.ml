@@ -30,7 +30,7 @@ let invalidate t = List.iter Lwd.invalidate t.waiters
 
 let add t (task : Task.t) =
   match task.kind with
-  | Meio_runtime_events.Cancellation_context _ | Meio_runtime_events.Task -> (
+  | Meio_runtime_events.Cancellation_context _ -> (
       match Hashtbl.find_opt t.by_id (Task.Id.extern_of_int task.parent_id) with
       | None ->
           Logs.warn (fun f ->
