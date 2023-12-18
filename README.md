@@ -9,18 +9,17 @@ Meio is a CLI tool for monitoring programs using [Eio][]. It allows you to see, 
 
 ### Building meio
 
-Meio uses custom events which will be available in OCaml 5.1. This means currently you must use an unreleased compiler and a few forked libraries. 
+Meio uses custom events which will be available in OCaml 5.1. This means currently you must use a few forked libraries.
 
-To build Meio locally, you can add a temporary opam-repository and use the custom-events compiler:
+To build Meio locally:
 
 ```
-$ opam repo add custom-events https://github.com/TheLortex/custom-events-opam-repository.git
-$ opam switch create --no-install custom-events --packages ocaml-variants.5.0.0+custom-events --repositories=custom-events,default
+$ opam switch create . 5.1.0~rc1 --no-install
 $ opam install --deps-only .
 $ dune build
 ```
 
-You can install meio with `dune install` and then run one of the example programs from Meio.
+You can install meio with `dune install ./meio.opam` and then run one of the example programs from Meio.
 
 ```
 $ meio _build/default/example/burn.exe
