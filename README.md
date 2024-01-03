@@ -14,12 +14,12 @@ Meio uses custom events which will be available in OCaml 5.1. This means current
 To build Meio locally:
 
 ```
-$ opam switch create . 5.1.0~rc1 --no-install
+$ opam switch create . 5.1.1 --no-install
 $ opam install --deps-only .
 $ dune build
 ```
 
-You can install meio with `dune install ./meio.opam` and then run one of the example programs from Meio.
+You can install meio with `opam install ./meio.opam` and then run one of the example programs from Meio.
 
 ```
 $ meio _build/default/example/burn.exe
