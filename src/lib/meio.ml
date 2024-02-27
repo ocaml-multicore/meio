@@ -14,9 +14,9 @@ let task_events ~latency_begin ~latency_end q =
     match e with
     (* |  -> Queue.push q () *)
     | `Create (fiber, `Fiber_in parent) ->
-      Queue.push q (`Created ((fiber :> int), parent, d, ts, e))
+        Queue.push q (`Created ((fiber :> int), parent, d, ts, e))
     | `Create (id, `Cc _) ->
-      Queue.push q (`Created ((id :> int), !current_id, d, ts, e))
+        Queue.push q (`Created ((id :> int), !current_id, d, ts, e))
     | `Suspend_fiber _ ->
         current_id := -1;
         Queue.push q (`Suspend (d, ts))
@@ -164,7 +164,8 @@ let ui_loop ~q ~hist =
       while not (Queue.is_empty q) do
         match Queue.pop q with
         | None -> ()
-        | Some (`Created (id, parent_id, domain, ts, v)) -> State.add_tasks ~id ~parent_id ~domain ts v
+        | Some (`Created (id, parent_id, domain, ts, v)) ->
+            State.add_tasks ~id ~parent_id ~domain ts v
         | Some (`Switch (v, domain, ts)) ->
             State.switch_to ~id:(v :> int) ~domain ts
         | Some (`Suspend (domain, ts)) -> State.switch_to ~id:(-1) ~domain ts

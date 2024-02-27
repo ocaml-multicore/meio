@@ -122,7 +122,7 @@ let ns_span i = Fmt.(to_to_string uint64_ns_span (Int64.of_int i))
 
 let ui task =
   match task.kind with
-  |  `Create (_, `Cc _) ->
+  | `Create (_, `Cc _) ->
       W.fmt
         ~attr:Notty.A.(st bold ++ fg green)
         "Cancellation context %a in domain %i" Id.pp task.id task.domain

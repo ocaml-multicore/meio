@@ -45,6 +45,11 @@ type t = {
 val is_active : t -> bool
 
 val create :
-  id:int -> domain:int -> parent_id:int -> int64 -> Eio_runtime_events.event -> t
+  id:int ->
+  domain:int ->
+  parent_id:int ->
+  int64 ->
+  Eio_runtime_events.event ->
+  t
 
 val ui : t -> Nottui.ui
