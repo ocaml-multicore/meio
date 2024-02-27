@@ -14,7 +14,7 @@ let make () =
   let node =
     {
       (Task.create ~id:(-1) ~domain:0 ~parent_id:(-1) (Timestamp.current ())
-      (`Create ((-1), `Fiber_in (-1))))
+         (`Create (-1, `Fiber_in (-1))))
       with
       name = [ "sleep" ];
       selected = ref true;
@@ -81,9 +81,7 @@ let update_active t ~id ts =
   invalidate t
 
 let is_cancellation_context task =
-  match task.Task.kind with
-  | `Create (_, `Cc _) -> true
-  | _ -> false
+  match task.Task.kind with `Create (_, `Cc _) -> true | _ -> false
 
 let set_parent t ~child ~parent ts =
   Logs.debug (fun f ->
