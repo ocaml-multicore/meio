@@ -16,7 +16,9 @@ let task_events ~latency_begin ~latency_end q =
     | `Create (fiber, `Fiber_in parent) ->
         Queue.push q (`Created ((fiber :> int), parent, d, ts, e))
     | `Create (id, `Cc _) ->
-        Queue.push q (`Created ((id :> int), !current_id, d, ts, e))
+        Queue.push q (`Created ((id :> int), !current_id, d, ts, e));
+        (* Bit of a hack -- eio could label this for us? *)
+        if id = 0 then Queue.push q (`Name (id, "root"))
     | `Suspend_fiber _ ->
         current_id := -1;
         Queue.push q (`Suspend (d, ts))

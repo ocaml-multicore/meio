@@ -1,8 +1,7 @@
 open Eio
 
 let woops_sleepy ~clock =
-  Eio_name.name "sleeper";
-  Switch.run ~name:"sleeper" @@ fun sw ->
+  Switch.run ~name:"unix sleeper ctx" @@ fun sw ->
   Fiber.fork ~sw (fun () ->
       Eio_name.name "unix sleeper";
       (* Woops! Wrong sleep function, we blocked the fiber *)
@@ -16,7 +15,7 @@ let spawn ~clock min max =
   for _i = 0 to 100 do
     ignore (Sys.opaque_identity @@ Array.init 1000000 float_of_int)
   done;
-  Switch.run @@ fun sw ->
+  Switch.run ~name:"spawn ctx" @@ fun sw ->
   for i = min to max do
     Fiber.fork ~sw (fun () ->
         Eio_name.name (Fmt.str "worker>%d" i);
@@ -37,6 +36,7 @@ let spawn ~clock min max =
 let main clock =
   let p, r = Promise.create () in
   Switch.run ~name:"main" @@ fun sw ->
+  Eio_name.name "main fiber";
   (* A long running task *)
   Fiber.fork ~sw (fun () ->
       Eio_name.name "waiter";
