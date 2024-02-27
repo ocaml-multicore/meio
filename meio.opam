@@ -1,16 +1,16 @@
 opam-version: "2.0"
 synopsis: "Monitor live Eio programs"
 description:
-  "Eio-console provides an executable that allows you to monitor OCaml programs using Eventring."
+  "Meio provides an executable that allows you to monitor OCaml programs using Eventring."
 maintainer: ["patrick@sirref.org"]
 authors: ["Patrick Ferris"]
 license: "MIT"
 homepage: "https://github.com/ocaml-multicore/meio"
 bug-reports: "https://github.com/ocaml-multicore/meio/issues"
 depends: [
-  "dune" {>= "2.9"}
+  "dune" {>= "3.10"}
   "eio_main"
-  "eio"
+  "eio"  {>= "0.14"}
   "astring"
   "ptime"
   "nottui"
@@ -36,10 +36,3 @@ build: [
   ["dune" "install" "-p" name "--create-install-files" name]
 ]
 dev-repo: "git+https://github.com/ocaml-multicore/meio.git"
-pin-depends: [
-  # Rebased version of https://github.com/TheLortex/eio/tree/runtime-events
-  ["eio.dev" "git+https://github.com/tmcgilchrist/eio#48fa41f1c6d915fc39848a406aed8c8a49cc25ba"]
-  ["eio_main.dev" "git+https://github.com/tmcgilchrist/eio#48fa41f1c6d915fc39848a406aed8c8a49cc25ba"]
-  ["eio_linux.dev" "git+https://github.com/tmcgilchrist/eio#48fa41f1c6d915fc39848a406aed8c8a49cc25ba"]
-  ["eio_posix.dev" "git+https://github.com/tmcgilchrist/eio#48fa41f1c6d915fc39848a406aed8c8a49cc25ba"]
-]
