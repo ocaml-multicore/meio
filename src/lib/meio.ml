@@ -1,6 +1,4 @@
-module Ctf = Eio.Private.Ctf
-
-let add_callback = Runtime_events.Callbacks.add_user_event
+module RE = Eio_runtime_events
 
 let task_events ~latency_begin ~latency_end q =
   let current_id = ref (-1) in
@@ -12,44 +10,25 @@ let task_events ~latency_begin ~latency_end q =
         Logs.warn (fun f -> f "[Domain %d] Lost %d events." domain count))
       ()
   in
-  let id_event_callback d ts c ((i : Ctf.id), v) =
-    match (Runtime_events.User.tag c, v) with
-    | Ctf.Created, (Ctf.Task | Ctf.Cancellation_context _) ->
-        Queue.push q (`Created ((i :> int), !current_id, d, ts, v))
-    | _ -> ()
-  in
-  let two_ids_callback _d ts c ((child : Ctf.id), (parent : Ctf.id)) =
-    match Runtime_events.User.tag c with
-    | Ctf.Parent -> Queue.push q (`Parent ((child :> int), (parent :> int), ts))
-    | _ -> ()
-  in
-  let unit_callback d ts c () =
-    match Runtime_events.User.tag c with
-    | Ctf.Suspend ->
+  let callback d (ts : Runtime_events.Timestamp.t) (e : RE.event) =
+    match e with
+    (* |  -> Queue.push q () *)
+    | `Create (fiber, `Fiber_in parent) ->
+      Queue.push q (`Created ((fiber :> int), parent, d, ts, e))
+    | `Create (id, `Cc _) ->
+      Queue.push q (`Created ((id :> int), !current_id, d, ts, e))
+    | `Suspend_fiber _ ->
         current_id := -1;
         Queue.push q (`Suspend (d, ts))
-    | _ -> ()
-  in
-  let id_callback d ts c i =
-    match Runtime_events.User.tag c with
-    | Ctf.Resolved -> Queue.push q (`Resolved (i, d, ts))
-    | Ctf.Switch ->
+    | `Exit_fiber i -> Queue.push q (`Resolved (i, d, ts))
+    | `Fiber i ->
         current_id := i;
         Queue.push q (`Switch ((i :> int), d, ts))
+    | `Name (i, s) -> Queue.push q (`Name ((i :> int), s))
+    | `Log s -> Queue.push q (`Log ((!current_id :> int), s))
     | _ -> ()
   in
-  let id_label_callback _d _ts c ((i : Ctf.id), s) =
-    match Runtime_events.User.tag c with
-    | Ctf.Name -> Queue.push q (`Name ((i :> int), s))
-    | Ctf.Log -> Queue.push q (`Log ((i :> int), s))
-    | Ctf.Loc -> Queue.push q (`Loc ((i :> int), s))
-    | _ -> ()
-  in
-  add_callback Ctf.created_type id_event_callback evs
-  |> add_callback Runtime_events.Type.int id_callback
-  |> add_callback Runtime_events.Type.unit unit_callback
-  |> add_callback Ctf.labelled_type id_label_callback
-  |> add_callback Ctf.two_ids_type two_ids_callback
+  RE.add_callbacks callback evs
 
 let get_selected () =
   Task_tree.find_first_lwd State.tasks (fun v -> !(v.Task.selected))
@@ -185,7 +164,7 @@ let ui_loop ~q ~hist =
       while not (Queue.is_empty q) do
         match Queue.pop q with
         | None -> ()
-        | Some (`Created v) -> State.add_tasks v
+        | Some (`Created (id, parent_id, domain, ts, v)) -> State.add_tasks ~id ~parent_id ~domain ts v
         | Some (`Switch (v, domain, ts)) ->
             State.switch_to ~id:(v :> int) ~domain ts
         | Some (`Suspend (domain, ts)) -> State.switch_to ~id:(-1) ~domain ts
