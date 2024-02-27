@@ -147,9 +147,9 @@ let render_task sort now ~depth ~filtered
   let kind =
     W.string ~attr
       (match kind with
-      | Cancellation_context _ -> "cc"
-      | Task -> "task"
-      | _ -> "??")
+      |  `Create (_, `Cc _) -> "cc"
+      |  `Create (_, `Fiber_in _) -> "task"
+      | _ -> Fmt.str "%a" Eio_runtime_events.pp_event kind)
   in
   (attr, !selected, [ domain; id; kind; name; busy; idle; entered; loc ], t)
 

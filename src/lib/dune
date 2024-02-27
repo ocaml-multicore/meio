@@ -4,4 +4,12 @@
  (foreign_stubs
   (language c)
   (names meio_console_stubs))
- (libraries eio eio.utils runtime_events ptime logs nottui hdr_histogram))
+ (libraries
+  eio
+  eio.utils
+  runtime_events
+  eio.runtime_events
+  ptime
+  logs
+  nottui
+  hdr_histogram))

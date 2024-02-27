@@ -1,17 +1,17 @@
 open Eio
 
 let woops_sleepy ~clock =
-  Private.Ctf.set_name "sleeper";
+  Eio_name.name "sleeper";
   Switch.run ~name:"sleeper" @@ fun sw ->
   Fiber.fork ~sw (fun () ->
-      Private.Ctf.set_name "unix sleeper";
+      Eio_name.name "unix sleeper";
       (* Woops! Wrong sleep function, we blocked the fiber *)
       traceln "Woops! Blocked by Unix.sleepf";
       Unix.sleepf 5.;
       Time.sleep clock 10.)
 
 let spawn ~clock min max =
-  Private.Ctf.set_name (Fmt.str "spawn %d %d" min max);
+  Eio_name.name (Fmt.str "spawn %d %d" min max);
   (* Some GC action *)
   for _i = 0 to 100 do
     ignore (Sys.opaque_identity @@ Array.init 1000000 float_of_int)
@@ -19,7 +19,7 @@ let spawn ~clock min max =
   Switch.run @@ fun sw ->
   for i = min to max do
     Fiber.fork ~sw (fun () ->
-        Private.Ctf.set_name (Fmt.str "worker>%d" i);
+        Eio_name.name (Fmt.str "worker>%d" i);
         for i = 0 to max do
           (* Some more GC action *)
           for _i = 0 to 100 do
@@ -39,7 +39,7 @@ let main clock =
   Switch.run ~name:"main" @@ fun sw ->
   (* A long running task *)
   Fiber.fork ~sw (fun () ->
-      Private.Ctf.set_name "waiter";
+      Eio_name.name "waiter";
       traceln "stuck waiting :(";
       Promise.await p;
       traceln "Done");
@@ -53,6 +53,5 @@ let main clock =
 
 let () =
   Eio_main.run @@ fun env ->
-  Ctf.with_tracing @@ fun () ->
   let clock = Stdenv.clock env in
   main clock
