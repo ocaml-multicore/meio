@@ -16,13 +16,10 @@ jobs:
         with:
           submodules: true
 
-      - name: Use OCaml 5.1.0
-        uses: ocaml/setup-ocaml@v2
+      - name: Set-up OCaml
+        uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: ocaml-base-compiler.5.1.0
-          opam-repositories: |
-            default: https://github.com/ocaml/opam-repository.git
-          dune-cache: true
+          ocaml-compiler: 5
 
       - name: Meio Deps 🐈‍⬛
         run: | # notty is pinned to hardcode the tty size (160 * 40)
