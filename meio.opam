@@ -13,7 +13,7 @@ depends: [
   "eio"  {>= "0.14"}
   "astring"
   "ptime"
-  "nottui"
+  "nottui-unix"
   "logs"
   "cmdliner"
   "hdr_histogram"

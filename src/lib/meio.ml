@@ -155,7 +155,7 @@ let ui_loop ~q ~hist =
   in
 
   Logs.info (fun f -> f "UI ready !");
-  Nottui.Ui_loop.run ~quit_on_escape:false ~quit
+  Nottui_unix.run ~quit_on_escape:false ~quit
     ~tick:(fun () ->
       Logging.poll ();
       Console.set_prev_now (Timestamp.current ());

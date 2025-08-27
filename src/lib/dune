@@ -11,5 +11,5 @@
   eio.runtime_events
   ptime
   logs
-  nottui
+  nottui-unix
   hdr_histogram))
