@@ -1,7 +1,12 @@
 val tasks : Task_tree.t
 
 val add_tasks :
-  int * int * int * Runtime_events.Timestamp.t * Eio.Private.Ctf.event -> unit
+  id:int ->
+  parent_id:int ->
+  domain:int ->
+  Runtime_events.Timestamp.t ->
+  Eio_runtime_events.event ->
+  unit
 
 val update_loc : int -> string -> unit
 val update_logs : int -> string -> unit

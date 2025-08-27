@@ -4,7 +4,7 @@ let fork wait =
   Switch.run @@ fun sw ->
   Fiber.fork ~sw (fun () ->
       (* Also add a really big label to test the handling of that in CTF. *)
-      Eio.Private.Ctf.log (String.make 5000 'e');
+      Eio_name.name (String.make 5000 'e');
       Promise.await wait)
 
 let main () =

@@ -14,7 +14,7 @@ let make () =
   let node =
     {
       (Task.create ~id:(-1) ~domain:0 ~parent_id:(-1) (Timestamp.current ())
-         Task)
+         (`Create (-1, `Fiber_in (-1))))
       with
       name = [ "sleep" ];
       selected = ref true;
@@ -36,7 +36,7 @@ let invalidate t = List.iter Lwd.invalidate t.waiters
 
 let add t (task : Task.t) =
   match task.kind with
-  | Eio.Private.Ctf.Cancellation_context _ -> (
+  | `Create (_, (`Fiber_in _ | `Cc _)) -> (
       match Hashtbl.find_opt t.by_id (Task.Id.eio_of_int task.parent_id) with
       | None ->
           Logs.warn (fun f ->
@@ -81,9 +81,7 @@ let update_active t ~id ts =
   invalidate t
 
 let is_cancellation_context task =
-  match task.Task.kind with
-  | Eio.Private.Ctf.Cancellation_context _ -> true
-  | _ -> false
+  match task.Task.kind with `Create (_, `Cc _) -> true | _ -> false
 
 let set_parent t ~child ~parent ts =
   Logs.debug (fun f ->

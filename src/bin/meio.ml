@@ -12,7 +12,9 @@ let run _stdenv exec_args =
       |]
       (Unix.environment ())
   in
-  let dev_null = Unix.openfile Filename.null [ Unix.O_WRONLY; Unix.O_KEEPEXEC ] 0o666 in
+  let dev_null =
+    Unix.openfile Filename.null [ Unix.O_WRONLY; Unix.O_KEEPEXEC ] 0o666
+  in
   let child_pid =
     Unix.create_process_env executable_filename argsl env Unix.stdin dev_null
       dev_null
