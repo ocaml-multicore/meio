@@ -16,10 +16,10 @@ jobs:
         with:
           submodules: true
 
-      - name: Use OCaml 5.1.0
+      - name: Use OCaml 5.1.1
         uses: ocaml/setup-ocaml@v2
         with:
-          ocaml-compiler: ocaml-base-compiler.5.1.0
+          ocaml-compiler: ocaml-base-compiler.5.1.1
           opam-repositories: |
             default: https://github.com/ocaml/opam-repository.git
           dune-cache: true
