@@ -19,7 +19,7 @@ jobs:
       - name: Set-up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: 5
+          ocaml-compiler: 5.3
 
       - name: Meio Deps 🐈‍⬛
         run: | # notty is pinned to hardcode the tty size (160 * 40)
