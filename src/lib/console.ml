@@ -97,8 +97,8 @@ let render_tree_line ~filtered depth is_active attr =
   |> Ui.hcat
 
 let render_task sort now ~depth ~filtered
-    ({ Task.id; domain; start; loc; name; busy; selected; status; kind; _ } as
-    t) =
+    ({ Task.id; domain; start; loc; name; busy; selected; status; kind; _ } as t)
+    =
   let is_active = Task.is_active t in
   let attr = attr' !selected is_active in
   let attr =
@@ -147,9 +147,9 @@ let render_task sort now ~depth ~filtered
   let kind =
     W.string ~attr
       (match kind with
-      | Cancellation_context _ -> "cc"
-      | Task -> "task"
-      | _ -> "??")
+      | `Create (_, `Cc _) -> "cc"
+      | `Create (_, `Fiber_in _) -> "task"
+      | _ -> Fmt.str "%a" Eio_runtime_events.pp_event kind)
   in
   (attr, !selected, [ domain; id; kind; name; busy; idle; entered; loc ], t)
 

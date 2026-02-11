@@ -91,7 +91,7 @@ type t = {
   loc : string list;
   logs : string list;
   status : status;
-  kind : Eio.Private.Ctf.event;
+  kind : Eio_runtime_events.event;
   selected : bool ref;
   display : display ref;
 }
@@ -122,7 +122,7 @@ let ns_span i = Fmt.(to_to_string uint64_ns_span (Int64.of_int i))
 
 let ui task =
   match task.kind with
-  | Cancellation_context _ ->
+  | `Create (_, `Cc _) ->
       W.fmt
         ~attr:Notty.A.(st bold ++ fg green)
         "Cancellation context %a in domain %i" Id.pp task.id task.domain

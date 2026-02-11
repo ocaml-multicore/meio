@@ -1,3 +1,9 @@
 (executables
  (names main deadlock burn burn_domains)
- (libraries astring eio eio_main unix eio.unix))
+ (modules :standard \ eio_name)
+ (libraries astring eio eio_main unix eio.unix eio_name))
+
+(library
+ (name eio_name)
+ (modules eio_name)
+ (libraries eio))

@@ -21,6 +21,5 @@ let main clock =
 
 let () =
   Eio_main.run @@ fun env ->
-  Ctf.with_tracing @@ fun () ->
   let clock = Stdenv.clock env in
   main clock

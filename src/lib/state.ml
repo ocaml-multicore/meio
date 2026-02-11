@@ -6,7 +6,7 @@ let set_parent ~child ~parent ts =
     ~parent:(Task.Id.eio_of_int parent)
     (Runtime_events.Timestamp.to_int64 ts)
 
-let add_tasks (id, parent_id, domain, ts, kind) =
+let add_tasks ~id ~parent_id ~domain ts kind =
   let task =
     Task.create ~id ~domain ~parent_id
       (Runtime_events.Timestamp.to_int64 ts)
