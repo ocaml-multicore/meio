@@ -224,15 +224,15 @@ let flatten t map =
       let cancellation_context = is_cancellation_context t.node in
       Seq.zip children next
       |> Seq.flat_map (fun (child, next) ->
-             let depth =
-               (match next with
-               | None -> { last = true; active = false; cancellation_context }
-               | Some { node = { Task.status = Resolved _; _ }; _ } ->
-                   { last = false; active = false; cancellation_context }
-               | _ -> { last = false; active = true; cancellation_context })
-               :: depth
-             in
-             map_loop ~depth child)
+          let depth =
+            (match next with
+            | None -> { last = true; active = false; cancellation_context }
+            | Some { node = { Task.status = Resolved _; _ }; _ } ->
+                { last = false; active = false; cancellation_context }
+            | _ -> { last = false; active = true; cancellation_context })
+            :: depth
+          in
+          map_loop ~depth child)
       |> Seq.cons v
   in
   map_loop ~depth:[] t.root
