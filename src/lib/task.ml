@@ -89,7 +89,7 @@ type t = {
   busy : Busy.t;
   name : string list;
   loc : string list;
-  logs : string list;
+  logs : (bool * string) list;
   status : status;
   kind : Eio_runtime_events.event;
   selected : bool ref;
@@ -153,6 +153,12 @@ let ui task =
       in
       let logs =
         W.string ~attr:Notty.A.(st bold ++ fg red) "LOGS"
-        :: List.map W.string task.logs
+        :: List.map
+             (fun (is_user, log) ->
+               if is_user then W.string ~attr:Notty.A.(st bold) log
+               else W.string log)
+             task.logs
       in
-      Ui.hcat [ Ui.vcat (title :: stats :: percentiles); Ui.vcat logs ]
+      let cols = [ Ui.vcat (title :: stats :: percentiles); Ui.vcat logs ] in
+      List.map (fun ui -> Ui.resize ~w:(Ui.layout_width ui + 3) ui) cols
+      |> Ui.hcat

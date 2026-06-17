@@ -27,6 +27,7 @@ let footer sort screen =
       key_help 's' ("Sort " ^ Sort.to_string sort);
       space;
       key_help 'q' "Quit";
+      space;
     ]
 
 let help : ui =

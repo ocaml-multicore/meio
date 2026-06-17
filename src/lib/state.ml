@@ -18,9 +18,10 @@ let update_loc i loc =
   Task_tree.update tasks (Task.Id.eio_of_int i) (fun t ->
       { t with Task.loc = loc :: t.loc })
 
-let update_logs i logs =
+let update_logs ?(is_user = false) ts i logs =
+  let logs = Fmt.str "[%a] %s" Fmt.uint64_ns_span ts logs in
   Task_tree.update tasks (Task.Id.eio_of_int i) (fun t ->
-      { t with Task.logs = logs :: t.logs })
+      { t with Task.logs = (is_user, logs) :: t.logs })
 
 let update_name i name =
   Task_tree.update tasks (Task.Id.eio_of_int i) (fun t ->
@@ -41,5 +42,5 @@ let terminated status ts =
     | Unix.WSIGNALED s -> Fmt.str "signaled (%d)" s
     | Unix.WSTOPPED s -> Fmt.str "stopped (%d)" s
   in
-  Logs.info (fun f -> f "Child process terminated with status %s" reason_str);
+  Logging.info (fun f -> f "Child process terminated with status %s" reason_str);
   Task_tree.iter_mut tasks (fun t -> { t with status = Resolved ts })

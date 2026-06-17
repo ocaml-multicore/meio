@@ -1,1 +1,8 @@
-val ui : child_pid:int -> string * int -> unit
+module Logging = Logging
+
+val ui :
+  ?prog:string * string list ->
+  child_pid:int ->
+  start:int64 ->
+  string * int ->
+  unit

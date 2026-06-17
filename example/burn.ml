@@ -15,7 +15,7 @@ let spawn ~clock min max =
   for _i = 0 to 100 do
     ignore (Sys.opaque_identity @@ Array.init 1000000 float_of_int)
   done;
-  Switch.run ~name:"spawn ctx" @@ fun sw ->
+  Switch.run ~name:"spawn" @@ fun sw ->
   for i = min to max do
     Fiber.fork ~sw (fun () ->
         Eio_name.name (Fmt.str "worker>%d" i);
@@ -36,10 +36,7 @@ let spawn ~clock min max =
 let main clock =
   let p, r = Promise.create () in
   Switch.run ~name:"main" @@ fun sw ->
-  Eio_name.name "main fiber";
-  (* A long running task *)
   Fiber.fork ~sw (fun () ->
-      Eio_name.name "waiter";
       traceln "stuck waiting :(";
       Promise.await p;
       traceln "Done");
@@ -52,6 +49,9 @@ let main clock =
   Promise.resolve r ()
 
 let () =
+  Fmt.pr "%a\n%!"
+    Fmt.(brackets @@ list ~sep:comma string)
+    (Array.to_list Sys.argv);
   Eio_main.run @@ fun env ->
   let clock = Stdenv.clock env in
   main clock

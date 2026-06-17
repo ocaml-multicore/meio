@@ -96,6 +96,10 @@ let render_tree_line ~filtered depth is_active attr =
   |> List.map (fun (s, is_active) -> W.string ~attr:(attr is_active) s)
   |> Ui.hcat
 
+let truncated ?(max = 32) s =
+  let len = String.length s in
+  if len <= max then s else String.sub s 0 max ^ "..."
+
 let render_task sort now ~depth ~filtered
     ({ Task.id; domain; start; loc; name; busy; selected; status; kind; _ } as t)
     =
@@ -136,7 +140,9 @@ let render_task sort now ~depth ~filtered
   in
   let idle = W.string ~attr @@ Fmt.(to_to_string uint64_ns_span idle) in
   let loc = W.string ~attr (try List.hd loc with Failure _ -> "") in
-  let name = W.string ~attr (try List.hd name with Failure _ -> "") in
+  let name =
+    W.string ~attr (try truncated @@ List.hd name with Failure _ -> "<task>")
+  in
   let entered = W.int ~attr (Task.Busy.count t.busy) in
   let name =
     if sort = Sort.Tree then
@@ -162,7 +168,7 @@ let header =
     green "BUSY";
     green "IDLE";
     green "ENTER";
-    green "INFO";
+    Ui.resize ~sw:1 @@ green "INFO";
   ]
 
 let init_widths = List.init (List.length header) (fun _ -> width)
@@ -186,7 +192,7 @@ let root sort =
       ~f:(fun uis ->
         let widths =
           List.fold_left
-            (fun acc (_, _, w, _) -> set_column_widths acc w)
+            (fun acc (_, _, task_ui, _) -> set_column_widths acc task_ui)
             !column_widths uis
         in
         column_widths := widths;

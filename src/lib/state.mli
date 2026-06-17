@@ -9,7 +9,7 @@ val add_tasks :
   unit
 
 val update_loc : int -> string -> unit
-val update_logs : int -> string -> unit
+val update_logs : ?is_user:bool -> int64 -> int -> string -> unit
 val update_name : int -> string -> unit
 val switch_to : id:int -> domain:'a -> Runtime_events.Timestamp.t -> unit
 val set_parent : child:int -> parent:int -> Runtime_events.Timestamp.t -> unit

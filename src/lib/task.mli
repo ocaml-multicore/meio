@@ -35,7 +35,7 @@ type t = {
   busy : Busy.t;
   name : string list;
   loc : string list;
-  logs : string list;
+  logs : (bool * string) list; (* bool is whether or not it is a user log *)
   status : status;
   kind : Eio_runtime_events.event;
   selected : bool ref;

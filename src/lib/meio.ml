@@ -1,7 +1,27 @@
 module RE = Eio_runtime_events
+module Logging = Logging
+
+type obj = { name : string option; ty : RE.obj_ty }
+
+let pp_obj ppf = function
+  | { ty; name = Some name } ->
+      Fmt.pf ppf "%s(%s)" (RE.obj_ty_to_string ty) name
+  | { ty; name = None } -> Fmt.pf ppf "%s" (RE.obj_ty_to_string ty)
+
+let objects : (int, obj) Hashtbl.t = Hashtbl.create 128
+
+let name_object name id =
+  match Hashtbl.find_opt objects id with
+  | None -> ()
+  | Some obj -> Hashtbl.replace objects id { obj with name = Some name }
 
 let task_events ~latency_begin ~latency_end q =
+  let previous_id = ref (-1) in
   let current_id = ref (-1) in
+  let update_id id =
+    previous_id := !current_id;
+    current_id := id
+  in
   let module Queue = Eio_utils.Lf_queue in
   let evs =
     Runtime_events.Callbacks.create ~runtime_begin:latency_begin
@@ -19,15 +39,37 @@ let task_events ~latency_begin ~latency_end q =
         Queue.push q (`Created ((id :> int), !current_id, d, ts, e));
         (* Bit of a hack -- eio could label this for us? *)
         if id = 0 then Queue.push q (`Name (id, "root"))
-    | `Suspend_fiber _ ->
-        current_id := -1;
+    | `Create (id, `Obj o) ->
+        let msg = Fmt.str "%a (%s)" RE.pp_event e (RE.obj_ty_to_string o) in
+        Queue.push q (`Log ((!current_id :> int), false, ts, msg));
+        Hashtbl.add objects id { ty = o; name = None }
+    | `Suspend_fiber s ->
+        let suspend_msg =
+          if String.length s = 0 then "suspend" else "suspend: " ^ s
+        in
+        Queue.push q (`Log (!current_id, false, ts, suspend_msg));
+        update_id (-1);
         Queue.push q (`Suspend (d, ts))
     | `Exit_fiber i -> Queue.push q (`Resolved (i, d, ts))
     | `Fiber i ->
-        current_id := i;
+        update_id i;
         Queue.push q (`Switch ((i :> int), d, ts))
-    | `Name (i, s) -> Queue.push q (`Name ((i :> int), s))
-    | `Log s -> Queue.push q (`Log ((!current_id :> int), s))
+    | `Name (i, s) ->
+        name_object s i;
+        Queue.push q (`Name ((i :> int), s))
+    | `Log s -> Queue.push q (`Log ((!current_id :> int), true, ts, s))
+    (* patrick: we could do better here, but for now we may as well log some information
+       about gets and puts. *)
+    | `Get g | `Try_get g | `Put g -> (
+        match Hashtbl.find_opt objects g with
+        | None -> ()
+        | Some o ->
+            let msg = Fmt.str "%a (%a)" RE.pp_event e pp_obj o in
+            (* Internal Eio logic for [try_get] *)
+            let id =
+              match e with `Try_get _ -> !previous_id | _ -> !current_id
+            in
+            Queue.push q (`Log ((id :> int), false, ts, msg)))
     | _ -> ()
   in
   RE.add_callbacks callback evs
@@ -45,8 +87,10 @@ let screens duration hist sort =
     (`Main, fun () -> Console.root sort);
     ( `Task,
       fun () ->
-        ( get_selected ()
-          |> Lwd.map ~f:(fun w -> Task.ui w |> Nottui.Ui.resize ~h:0 ~sh:1),
+        (* Presumably, only the logs of the task need to be a scroll area. *)
+        ( Nottui_widgets.scroll_area
+          @@ (get_selected ()
+             |> Lwd.map ~f:(fun w -> Task.ui w |> Nottui.Ui.resize ~h:0 ~sh:1)),
           Lwd.return None ) );
     ( `Gc,
       fun () ->
@@ -54,9 +98,11 @@ let screens duration hist sort =
           Lwd.return None ) );
     ( `Logs,
       fun () ->
-        ( Lwd_table.map_reduce
-            (fun _ line -> Notty.I.string Notty.A.empty line |> Nottui.Ui.atom)
-            Nottui.Ui.pack_y Logging.table,
+        ( Nottui_widgets.scroll_area
+          @@ Lwd_table.map_reduce
+               (fun _ line ->
+                 Notty.I.string Notty.A.empty line |> Nottui.Ui.atom)
+               Nottui.Ui.pack_y Logging.table,
           Lwd.return None ) );
   ]
 
@@ -85,7 +131,8 @@ let runtime_event_loop ~child_pid ~q ~stop ~cursor ~callbacks =
         Queue.push q (`Terminated child_status))
   done
 
-let ui_loop ~q ~hist =
+let ui_loop ~q ~prog ~start ~hist =
+  (* let exec, args = prog in *)
   let screen = Lwd.var `Main in
   let sort = Lwd.var Sort.Tree in
   let duration = Lwd.var 0L in
@@ -153,8 +200,15 @@ let ui_loop ~q ~hist =
     Lwd.map2 ~f:Nottui.Ui.join_y ui
       (Help.footer (Lwd.get sort) (Lwd.get screen))
   in
-
-  Logs.info (fun f -> f "UI ready !");
+  let () =
+    match prog with
+    | None -> ()
+    | Some (exec, args) ->
+        Logging.info (fun f ->
+            f "Running %s with args: %a" exec
+              Fmt.(brackets @@ list ~sep:comma string)
+              args)
+  in
   Nottui_unix.run ~quit_on_escape:false ~quit
     ~tick:(fun () ->
       Logging.poll ();
@@ -178,26 +232,38 @@ let ui_loop ~q ~hist =
             (* XXX: When to do this State.remove_task v ?  *)
         | Some (`Loc (i, l)) -> State.update_loc (i :> int) l
         | Some (`Name (i, l)) -> State.update_name (i :> int) l
-        | Some (`Log (i, l)) -> State.update_logs (i :> int) l
+        | Some (`Log (i, is_user, ts, l)) ->
+            let diff = Int64.sub (Runtime_events.Timestamp.to_int64 ts) start in
+            State.update_logs ~is_user diff (i :> int) l
         | Some (`Terminated status) ->
             State.terminated status (Timestamp.current ())
       done)
     ~tick_period:0.05 ui;
   Lwd.release release_queue task_list
 
-let ui ~child_pid handle =
+let create_cursor handle =
+  let rec try_create n =
+    if n < 0 then raise (Failure "Failed to create cursor")
+    else
+      try Runtime_events.create_cursor (Some handle)
+      with Failure _ ->
+        Unix.sleepf 0.1;
+        try_create (n - 1)
+  in
+  try_create 5
+
+let ui ?prog ~child_pid ~start handle =
+  let cursor = create_cursor handle in
   Logs.set_reporter (Logging.reporter ());
   Logs.set_level (Some Info);
-  let q = Queue.create () in
-  let cursor = Runtime_events.create_cursor (Some handle) in
   let hist, latency_begin, latency_end = Latency.init () in
-
+  let q = Queue.create () in
   let callbacks = task_events q ~latency_begin ~latency_end in
   let stop = Atomic.make false in
   let domain =
     Domain.spawn (fun () ->
         runtime_event_loop ~child_pid ~q ~stop ~cursor ~callbacks)
   in
-  ui_loop ~q ~hist;
+  ui_loop ~q ~start ~prog ~hist;
   Atomic.set stop true;
   Domain.join domain

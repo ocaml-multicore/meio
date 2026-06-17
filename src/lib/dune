@@ -10,6 +10,7 @@
   runtime_events
   eio.runtime_events
   ptime
+  mtime.clock
   logs
   nottui-unix
   hdr_histogram))

@@ -39,7 +39,7 @@ let add t (task : Task.t) =
   | `Create (_, (`Fiber_in _ | `Cc _)) -> (
       match Hashtbl.find_opt t.by_id (Task.Id.eio_of_int task.parent_id) with
       | None ->
-          Logs.warn (fun f ->
+          Logging.warn (fun f ->
               f "Couldn't find parent %d of %a" task.parent_id Task.Id.pp
                 task.id)
       | Some p ->
@@ -56,7 +56,7 @@ let update t id fn =
   | None -> (
       match Hashtbl.find_opt t.pending id with
       | None ->
-          Logs.warn (fun f -> f "Couldn't update fiber %a" Task.Id.pp_eio id)
+          Logging.warn (fun f -> f "Couldn't update fiber %a" Task.Id.pp_eio id)
       | Some v ->
           Hashtbl.replace t.pending id (fn v);
           invalidate t)
